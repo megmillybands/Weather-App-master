@@ -1,34 +1,67 @@
 .App {
   text-align: center;
   font-family: Arial, sans-serif;
-  background: linear-gradient(to bottom, #89f7fe, #66a6ff);
-  min-height: 100vh;
-  color: #333;
-  padding-top: 2rem;
+  background: transparent
+}
+
+.background-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  transition: opacity 1.5s ease-in-out, background 1.5s ease-in-out;
+  background-size: 400% 400%;
+  animation: gradientMove 15s ease infinite;
+  opacity: 1;
 }
 
 .weather-container {
-  background: white;
-  padding: 2rem;
-  margin: 2rem auto;
-  width: 300px;
-  border-radius: 1rem;
-  box-shadow: 0 0 10px rgba(0,0,0,0.2);
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 3rem 2.5rem;
+  margin: 3rem auto;
+  width: 600px;
+  min-height: 450px;
+  border-radius: 1.5rem;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transition: all 0.4s ease;
+}
+
+.weather-container h2 {
+  margin-bottom: 1.5rem;
+  font-size: 1.8rem;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .weather-container input {
   width: 80%;
-  padding: 0.5rem;
+  padding: 0.7rem;
   margin-bottom: 1rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  text-align: center;
+  font-size: 1rem;
 }
 
 .weather-container button {
-  padding: 0.5rem 1rem;
+  width: 80%;
+  padding: 0.7rem;
   background: #007bff;
   color: white;
   border: none;
-  border-radius: 5px;
+  border-radius: 8px;
   cursor: pointer;
+  font-size: 1rem;
 }
 
 .weather-container button:hover {
@@ -36,30 +69,45 @@
 }
 
 .weather-info {
-  margin-top: 1rem;
-  font-size: 1.1rem;
+  margin-top: 2rem;
+  font-size: 1.2rem;
+  color: #fff;
 }
 
-.error {
-  color: red;
+body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  background: linear-gradient(270deg, #89f7fe, #66a6ff, #fbc2eb, #a6c1ee);
+  background-size: 800% 800%;
+  animation: gradientMove 15s ease infinite;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  transition: background 1s ease-in-out;
 }
 
-@media screen {
+@media (max-width: 700px) {
   .weather-container {
-    width: 80%;
-    padding: 1.5rem;
+    width: 90%;
+    padding: 2rem;
   }
-  
-}@media (max-width: 600px) {
-  .weather-container {
-    width: 95%;
-    padding: 1rem;
-  }
-}.weather-container input,
+
+  .weather-container input,
   .weather-container button {
     width: 100%;
   }
+}
 
-
-
-
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}

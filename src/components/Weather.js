@@ -16,11 +16,64 @@ function Weather() {
       );
       setWeather(response.data);
       setError("");
+      updateBackground(response.data.weather[0].main);
     } catch (err) {
       setError("City not found!");
       setWeather(null);
     }
   };
+
+const updateBackground = (weatherMain) => {
+  const body = document.body;
+  body.style.transition = "background 1.5s ease-in-out";
+  body.style.animation = "none"; // Reset animation before applying new one
+
+  switch (weatherMain.toLowerCase()) {
+    case "clear":
+      body.style.background = "linear-gradient(-45deg, #f6d365, #fda085, #fbc2eb, #a6c1ee)";
+      break;
+    case "clouds":
+      body.style.background = "linear-gradient(-45deg, #bdc3c7, #2c3e50, #757f9a, #d7dde8)";
+      break;
+    case "rain":
+      body.style.background = "linear-gradient(-45deg, #4e54c8, #8f94fb, #667db6, #0082c8)";
+      break;
+    case "thunderstorm":
+      body.style.background = "linear-gradient(-45deg, #141E30, #243B55, #232526, #414345)";
+      break;
+    case "snow":
+      body.style.background = "linear-gradient(-45deg, #e0eafc, #cfdef3, #f8fbff, #e2ebf0)";
+      break;
+    case "drizzle":
+      body.style.background = "linear-gradient(-45deg, #89f7fe, #66a6ff, #a1c4fd, #c2e9fb)";
+      break;
+    case "mist":
+    case "fog":
+      body.style.background = "linear-gradient(-45deg, #757f9a, #d7dde8, #bdc3c7, #2c3e50)";
+      break;
+    case "haze":
+      body.style.background = "linear-gradient(-45deg, #ffecd2, #fcb69f, #f6d365, #fda085)";
+      break;
+    case "smoke":
+      body.style.background = "linear-gradient(-45deg, #434343, #000000, #232526, #414345)";
+      break;
+    case "dust":
+    case "sand":
+      body.style.background = "linear-gradient(-45deg, #eacda3, #d6ae7b, #cbb4d4, #20002c)";
+      break;
+    default:
+      body.style.background = "linear-gradient(-45deg, #89f7fe, #66a6ff, #a1c4fd, #c2e9fb)";
+  }
+  
+  overlay.style.opacity = 0;
+  setTimeout(() => {
+    overlay.style.background = gradient;
+    overlay.style.backgroundSize = "400% 400%";
+    overlay.style.animation = "gradientMove 15s ease infinite";
+    overlay.style.opacity = 1;
+  }, 500);
+};
+
 
   return (
     <div className="weather-container">
