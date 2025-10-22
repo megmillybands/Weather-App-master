@@ -24,48 +24,52 @@ function Weather() {
   };
 
 const updateBackground = (weatherMain) => {
-  const body = document.body;
-  body.style.transition = "background 1.5s ease-in-out";
-  body.style.animation = "none"; // Reset animation before applying new one
+  const overlay = document.querySelector(".background-overlay");
+  if (!overlay) return;
+
+  let gradient = "";
 
   switch (weatherMain.toLowerCase()) {
     case "clear":
-      body.style.background = "linear-gradient(-45deg, #f6d365, #fda085, #fbc2eb, #a6c1ee)";
+      gradient = "linear-gradient(-45deg, #f6d365, #fda085, #fbc2eb, #a6c1ee)";
       break;
     case "clouds":
-      body.style.background = "linear-gradient(-45deg, #bdc3c7, #2c3e50, #757f9a, #d7dde8)";
+      gradient = "linear-gradient(-45deg, #bdc3c7, #2c3e50, #757f9a, #d7dde8)";
       break;
     case "rain":
-      body.style.background = "linear-gradient(-45deg, #4e54c8, #8f94fb, #667db6, #0082c8)";
+      gradient = "linear-gradient(-45deg, #4e54c8, #8f94fb, #667db6, #0082c8)";
       break;
     case "thunderstorm":
-      body.style.background = "linear-gradient(-45deg, #141E30, #243B55, #232526, #414345)";
+      gradient = "linear-gradient(-45deg, #141E30, #243B55, #232526, #414345)";
       break;
     case "snow":
-      body.style.background = "linear-gradient(-45deg, #e0eafc, #cfdef3, #f8fbff, #e2ebf0)";
+      gradient = "linear-gradient(-45deg, #e0eafc, #cfdef3, #f8fbff, #e2ebf0)";
       break;
     case "drizzle":
-      body.style.background = "linear-gradient(-45deg, #89f7fe, #66a6ff, #a1c4fd, #c2e9fb)";
+      gradient = "linear-gradient(-45deg, #89f7fe, #66a6ff, #a1c4fd, #c2e9fb)";
       break;
     case "mist":
     case "fog":
-      body.style.background = "linear-gradient(-45deg, #757f9a, #d7dde8, #bdc3c7, #2c3e50)";
+      gradient = "linear-gradient(-45deg, #757f9a, #d7dde8, #bdc3c7, #2c3e50)";
       break;
     case "haze":
-      body.style.background = "linear-gradient(-45deg, #ffecd2, #fcb69f, #f6d365, #fda085)";
+      gradient = "linear-gradient(-45deg, #ffecd2, #fcb69f, #f6d365, #fda085)";
       break;
     case "smoke":
-      body.style.background = "linear-gradient(-45deg, #434343, #000000, #232526, #414345)";
+      gradient = "linear-gradient(-45deg, #434343, #000000, #232526, #414345)";
       break;
     case "dust":
     case "sand":
-      body.style.background = "linear-gradient(-45deg, #eacda3, #d6ae7b, #cbb4d4, #20002c)";
+      gradient = "linear-gradient(-45deg, #eacda3, #d6ae7b, #cbb4d4, #20002c)";
       break;
     default:
-      body.style.background = "linear-gradient(-45deg, #89f7fe, #66a6ff, #a1c4fd, #c2e9fb)";
+      gradient = "linear-gradient(-45deg, #89f7fe, #66a6ff, #a1c4fd, #c2e9fb)";
   }
-  
+
+  overlay.style.transition = "opacity 1.5s ease-in-out, background 1.5s ease-in-out";
+  overlay.style.animation = "none";
   overlay.style.opacity = 0;
+
   setTimeout(() => {
     overlay.style.background = gradient;
     overlay.style.backgroundSize = "400% 400%";
