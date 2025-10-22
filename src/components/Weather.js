@@ -80,30 +80,33 @@ const updateBackground = (weatherMain) => {
 
 
   return (
-    <div className="weather-container">
-      <h2>Check the Weather</h2>
-      <input
-        type="text"
-        placeholder="Enter city name"
-        value={city}
-        onChange={(e) => setCity(e.target.value)}
-      />
-      <button onClick={getWeather}>Search</button>
+    <>
+      <div className="background-overlay"></div>
+      <div className="weather-container">
+        <h2>Check the Weather</h2>
+        <input
+          type="text"
+          placeholder="Enter city name"
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+        />
+        <button onClick={getWeather}>Search</button>
 
-      {error && <p className="error">{error}</p>}
+        {error && <p className="error">{error}</p>}
 
-      {weather && (
-        <div className="weather-info">
-          <h3>{weather.name}</h3>
-          <p>
-            🌡️ {weather.main.temp}°C (
-            {(weather.main.temp * 9 / 5 + 32).toFixed(1)}°F)
-          </p>
-          <p>☁️ {weather.weather[0].description}</p>
-          <p>💨 Wind: {weather.wind.speed} m/s</p>
-        </div>
-      )}
-    </div>
+        {weather && (
+          <div className="weather-info">
+            <h3>{weather.name}</h3>
+            <p>
+              🌡️ {weather.main.temp}°C (
+              {(weather.main.temp * 9 / 5 + 32).toFixed(1)}°F)
+            </p>
+            <p>☁️ {weather.weather[0].description}</p>
+            <p>💨 Wind: {weather.wind.speed} m/s</p>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
