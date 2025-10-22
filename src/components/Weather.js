@@ -91,7 +91,10 @@ const updateBackground = (weatherMain) => {
       {weather && (
         <div className="weather-info">
           <h3>{weather.name}</h3>
-          <p>🌡️ {weather.main.temp}°C</p>
+          <p>
+            🌡️ {weather.main.temp}°C (
+            {(weather.main.temp * 9 / 5 + 32).toFixed(1)}°F)
+          </p>
           <p>☁️ {weather.weather[0].description}</p>
           <p>💨 Wind: {weather.wind.speed} m/s</p>
         </div>
@@ -100,4 +103,4 @@ const updateBackground = (weatherMain) => {
   );
 }
 
-export default Weather;
+export default Weather; 
