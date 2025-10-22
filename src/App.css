@@ -1,4 +1,45 @@
-.App-header {
+.App {
   text-align: center;
-  font-size: xx-large;
+  font-family: Arial, sans-serif;
+  background: linear-gradient(to bottom, #89f7fe, #66a6ff);
+  min-height: 100vh;
+  color: #333;
+  padding-top: 2rem;
+}
+
+.weather-container {
+  background: white;
+  padding: 2rem;
+  margin: 2rem auto;
+  width: 300px;
+  border-radius: 1rem;
+  box-shadow: 0 0 10px rgba(0,0,0,0.2);
+}
+
+.weather-container input {
+  width: 80%;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.weather-container button {
+  padding: 0.5rem 1rem;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.weather-container button:hover {
+  background: #0056b3;
+}
+
+.weather-info {
+  margin-top: 1rem;
+  font-size: 1.1rem;
+}
+
+.error {
+  color: red;
 }
