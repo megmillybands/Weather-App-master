@@ -43,3 +43,23 @@
 .error {
   color: red;
 }
+
+@media screen {
+  .weather-container {
+    width: 80%;
+    padding: 1.5rem;
+  }
+  
+}@media (max-width: 600px) {
+  .weather-container {
+    width: 95%;
+    padding: 1rem;
+  }
+}.weather-container input,
+  .weather-container button {
+    width: 100%;
+  }
+
+
+
+
