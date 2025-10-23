@@ -157,7 +157,7 @@ function Weather() {
           onChange={(e) => setCity(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && getWeather()}
         />
-        <button onClick={getWeather}>Search</button>
+        <button onClick={() => getWeather()}>Search</button>
 
         {error && <p className="error">{error}</p>}
 
@@ -177,6 +177,13 @@ function Weather() {
             >
               {isFavorite ? "⭐ Saved" : "☆ Save to Favorites"}
             </button>
+            {activeAlert ? (
+              <WeatherAlert type={activeAlert} />
+            ) : (
+              <div className="no-alert-message">
+                No active weather alerts for this area.
+              </div>
+            )}
           </div>
         )}
         {favorites.length > 0 && (
@@ -204,15 +211,6 @@ function Weather() {
           </div>
         )}
       </div>
-
-      {weather &&
-        (activeAlert ? (
-          <WeatherAlert type={activeAlert} />
-        ) : (
-          <div className="no-alert-message">
-            No active weather alerts for this area.
-          </div>
-        ))}
     </>
   );
 }
