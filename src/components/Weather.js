@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react"
 import axios from "axios";
 import "../App.css";
 
@@ -6,13 +6,24 @@ function Weather() {
   const [city, setCity] = useState("");
   const [weather, setWeather] = useState(null);
   const [error, setError] = useState("");
+  const [favorites, setFavorites] = useState([]);
 
   const apiKey = "e54b1a91b15cfa9a227758fc1e6b5c27";
 
-  const getWeather = async () => {
+  useEffect(() => {
+  const savedFavorites = localStorage.getItem("favoriteCities");
+  if (savedFavorites) {
+    setFavorites(JSON.parse(savedFavorites));
+  }
+}, []);
+useEffect(() => {
+  localStorage.setItem("favoriteCities", JSON.stringify(favorites));
+}, [favorites]);
+
+  const getWeather = async (cityName = city) => {
     try {
       const response = await axios.get(
-        `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`
+        `https://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${apiKey}&units=metric`
       );
       setWeather(response.data);
       setError("");
@@ -22,6 +33,18 @@ function Weather() {
       setWeather(null);
     }
   };
+
+const addToFavorites = () => {
+  if (weather && !favorites.includes(weather.name)) {
+    setFavorites([...favorites, weather.name]);
+  }
+};
+
+const removeFromFavorites = (cityName) => {
+  setFavorites(favorites.filter(fav => fav !== cityName));
+};
+
+const isFavorite = weather && favorites.includes(weather.name);
 
 const updateBackground = (weatherMain) => {
   const overlay = document.querySelector(".background-overlay");
@@ -89,6 +112,7 @@ const updateBackground = (weatherMain) => {
           placeholder="Enter city name"
           value={city}
           onChange={(e) => setCity(e.target.value)}
+           onKeyPress={(e) => e.key === 'Enter' && getWeather()}
         />
         <button onClick={getWeather}>Search</button>
 
@@ -103,8 +127,36 @@ const updateBackground = (weatherMain) => {
             </p>
             <p>☁️ {weather.weather[0].description}</p>
             <p>💨 Wind: {weather.wind.speed} m/s</p>
+            <button 
+  onClick={addToFavorites} 
+  disabled={isFavorite}
+  className="favorite-btn"
+>
+  {isFavorite ? "⭐ Saved" : "☆ Save to Favorites"}
+</button>
           </div>
         )}
+{favorites.length > 0 && (
+  <div className="favorites-section">
+    <h3>Favorite Cities</h3>
+    <div className="favorites-list">
+      {favorites.map((fav) => (
+        <div key={fav} className="favorite-item">
+          <span onClick={() => getWeather(fav)} style={{cursor: 'pointer'}}>
+            {fav}
+          </span>
+          <button 
+            onClick={() => removeFromFavorites(fav)}
+            className="remove-btn"
+          >
+            ✕
+          </button>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
       </div>
     </>
   );
