@@ -73,6 +73,7 @@
   margin-top: 2rem;
   font-size: 1.2rem;
   color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
 body {
@@ -111,4 +112,112 @@ body {
   100% {
     background-position: 0% 50%;
   }
+}
+
+#favorite-city {
+  border: 2px solid black;
+  text-decoration: underline black;
+}
+
+.alert-box {
+  border-radius: 10px;
+  padding: 20px;                
+  margin: 20px 0;
+  color: #fff;
+  text-align: left;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+.alert-box[class*="rain"] {
+  background-color: #4a90e2;
+}
+.alert-box[class*="thunder"] {
+  background-color: #f5a623;
+}
+.alert-box[class*="snow"] {
+  background-color: #298cb4;
+}
+.alert-box[class*="heat"], .alert-box[class*="uv"], .alert-box[class*="sun"], .alert-box[class*="clear"] {
+  background-color: #f8911c;
+  color: #333; /* Use dark text for light background */
+}
+.alert-box[class*="tornado"] {
+  background-color: #9013fe;
+}
+.alert-box[class*="sleet"], .alert-box[class*="hail"] {
+  background-color: #bd10e0;
+}
+.alert-box[class*="flood"], .alert-box[class*="flood"] {
+  background-color: #d0021b;
+}
+.alert-box[class*="fog"] {
+  background-color: #7f8c8d;
+}
+
+.alerts-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+  padding: 20px;
+}
+
+.alert-box {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  width: 300px;
+}
+
+.alert-icon {
+  font-size: 2rem;
+}
+
+.alert-content strong {
+  font-size: 1.1rem;
+}
+
+.alert-content p {
+  font-size: 1rem;
+}
+
+.alert-preview-container {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.4);
+  width: 100%;
+  color: white;
+}
+.alert-preview-container .alert-box {
+  margin: 20px auto;
+}
+
+.alert-preview-container h2 {
+  margin-top: 0;
+}
+
+.alert-dropdown {
+  width: 50%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 700px) {
+  .alert-dropdown {
+    width: 80%;
+  }
+}
+
+.no-alert-message {
+  margin-top: 2rem;
+  padding: 1rem;
+  background-color: rgba(0, 123, 255, 0.2);
+  border-radius: 10px;
+  color: #fff;
+  font-size: 1.6rem;
+  width: 300px;
 }
