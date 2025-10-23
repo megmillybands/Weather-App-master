@@ -79,7 +79,7 @@ body {
   margin: 0;
   padding: 0;
   height: 100vh;
-  background: linear-gradient(270deg, #89f7fe, #66a6ff, #fbc2eb, #a6c1ee);
+  background: linear-gradient(270deg, #89f7fe, #66a6ff, #a6c1ee);
   background-size: 800% 800%;
   animation: gradientMove 15s ease infinite;
   display: flex;
@@ -112,6 +112,12 @@ body {
     background-position: 0% 50%;
   }
 }
+
+#favorite-city {
+  border: 2px solid black;
+  text-decoration: underline black;
+}
+
 .alert-box {
   border-radius: 10px;
   padding: 20px;                
