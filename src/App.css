@@ -1,16 +1,44 @@
+@font-face {
+  font-family: 'Sunday Weather';
+  src: url(/src/components/fonts/weather_sunday_-_personal_use-webfont.woff) format('woff'), url(/src/components/fonts/weather_sunday_-_personal_use-webfont.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'Sunny Weather';
+  src: url(/src/components/fonts/sunny_weather_demo-webfont.woff) format('woff'), url(/src/components/fonts/sunny_weather_demo-webfont.woff2) format('woff2');
+}
+
 .App {
   text-align: center;
   font-family: "Segoe UI", Arial, sans-serif;
   background: transparent;
 }
 
+.App-header h1 {
+  z-index: 1;
+  font-family: 'Sunday Weather';
+  font-size: 5rem;
+  color: whitesmoke;
+  margin: 0;
+  margin-top: 3rem;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
+}
+
+h3 {
+  font-family: Arial, Helvetica, sans-serif;
+  color: whitesmoke;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
+  font-size: 2rem;
+}
+
 .background-overlay {
+  background: linear-gradient(-45deg, #89f7fe, #66a6ff, #a1c4fd, #c2e9fb);
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 0;
+  z-index: -1;
   transition: opacity 1.5s ease-in-out, background 1.5s ease-in-out;
   background-size: 400% 400%;
   animation: gradientMove 15s ease infinite;
@@ -22,86 +50,105 @@
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(15px) saturate(180%);
   -webkit-backdrop-filter: blur(15px) saturate(180%);
+  position: relative;
   padding: 3rem 2.5rem;
   margin: 3rem auto;
   width: 600px;
   min-height: 450px;
   border-radius: 1.8rem;
-  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 10px 50px 10px rgba(0, 0, 0, 0.25);
   display: flex;
   flex-direction: column;
   align-items: center;
-  text-align: center;
+  justify-content: center;
   z-index: 1;
   transition: transform 0.4s ease, box-shadow 0.4s ease;
 }
 
 .weather-container:hover {
   transform: translateY(-3px);
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 10px 50px 10px rgba(0, 0, 0, 0.25);
 }
 
 .weather-container h2 {
-  margin-bottom: 1.5rem;
-  font-size: 2rem;
-  color: #fff;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-  letter-spacing: 1px;
+  margin: 2rem;
+  margin-bottom: 1rem;
+  font-family: 'Sunny Weather';
+  font-size: 4rem;
+  font-weight: lighter;
+  color: whitesmoke;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
 }
 
-.weather-container input {
+.weather-container .input-row {
   width: 80%;
+}
+
+.weather-container #city-input {
+  width: 20rem;
   padding: 0.8rem;
   margin-bottom: 1rem;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   background: rgba(255, 255, 255, 0.3);
   text-align: center;
+  color: rgba(0, 0, 0, 0.4);
+  font-family:Arial, Helvetica, sans-serif;
   font-size: 1rem;
   outline: none;
   transition: all 0.3s ease;
+  text-decoration: none;
 }
 
-.weather-container input:focus {
+.weather-container #city-input:focus {
   background: rgba(255, 255, 255, 0.5);
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
+}
+
+.weather-container #city-input::-webkit-input-placeholder {
+  color: rgba(0, 0, 0, 0.4);
+  font-family:Arial, Helvetica, sans-serif;
+  font-size: 1rem;
 }
 
 .weather-container button {
-  width: 80%;
+  width: 20rem;
   padding: 0.8rem;
   background: linear-gradient(135deg, #4facfe, #00f2fe);
-  color: white;
+  color: whitesmoke;
   border: none;
   border-radius: 10px;
   cursor: pointer;
-  font-size: 1rem;
-  font-weight: 600;
+  font-family: 'Sunny Weather';
+  font-size: 2rem;
+  font-weight: lighter;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .weather-container button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(79, 172, 254, 0.5);
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.25);
 }
 
 .weather-info {
-  margin-top: 2rem;
+  font-family: Arial, Helvetica, sans-serif;
+  margin-top: 2.5rem;
   font-size: 1.2rem;
-  color: #fff;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  color: whitesmoke;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
   animation: fadeIn 0.8s ease-in-out;
+  border-top: 1px solid rgba(255,255,255,0.25);
 }
 
 /* ---------------- ALERT BOX ---------------- */
 .alert-box {
+  font-family: Arial, Helvetica, sans-serif;
   border-radius: 12px;
   padding: 20px;
   margin: 20px auto;
-  color: #fff;
+  color: whitesmoke;
   text-align: center;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+  /* box-shadow: 0 10px 50px 10px rgba(0, 0, 0, 0.25); */
   width: 80%;
   font-size: 1.2rem;
   animation: fadeIn 0.8s ease-in-out;
@@ -115,11 +162,13 @@
 .alert-box[class*="fog"] { background-color: #7f8c8d; }
 
 .no-alert-message {
+  font-family: Arial, Helvetica, sans-serif;
   margin: 2rem auto 0 auto;
   padding: 1rem 1.5rem;
-  background-color: rgba(0, 123, 255, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 10px;
-  color: #fff;
+  color: whitesmoke;
   font-size: 1.2rem;
   width: fit-content;
   max-width: 80%;
@@ -128,20 +177,15 @@
   align-items: center;
   justify-content: center;
   animation: fadeIn 0.8s ease-in-out;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
 }
 
 /* ---------------- FORECAST ---------------- */
 .forecast-container {
-  margin-top: 2rem;
-  color: #fff;
+  margin-top: 2.5rem;
   width: 100%;
   text-align: center;
-}
-
-.forecast-container h3 {
-  font-size: 1.6rem;
-  margin-bottom: 1.2rem;
-  text-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  border-top: 1px solid rgba(255,255,255,0.25);
 }
 
 .forecast-grid {
@@ -152,26 +196,27 @@
 }
 
 .forecast-card {
-  background: rgba(255, 255, 255, 0.25);
   backdrop-filter: blur(10px);
   border-radius: 1rem;
   padding: 1rem;
   width: 120px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  /* box-shadow: 0 10px 50px 10px rgba(0, 0, 0, 0.25); */
+  border: 1px solid rgba(255, 255, 255, 0.25);
   transition: all 0.3s ease;
 }
 
 .forecast-card:hover {
   transform: translateY(-5px) scale(1.05);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 0 20px 0 rgba(0, 0, 0, 0.1);
 }
 
 .forecast-card strong {
   display: block;
-  font-size: 1.1rem;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 1.3rem;
   margin-bottom: 0.3rem;
-  color: #fff;
+  color: whitesmoke;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
 }
 
 .forecast-card img {
@@ -180,50 +225,66 @@
 }
 
 .forecast-card p {
+  font-family: Arial, Helvetica, sans-serif;
   margin: 0.3rem 0;
-  font-size: 0.9rem;
-  color: #f0f0f0;
+  font-size: 1rem;
+  color: whitesmoke;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
 }
 
 /* ---------------- FAVORITES ---------------- */
+.favorite-btn {
+  margin-top: 1rem;
+}
+
 .favorites-section {
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid rgba(255,255,255,0.3);
-  color: #fff;
+  width: 100%;
+  margin-top: 2.5rem;
+  border-top: 1px solid rgba(255,255,255,0.25);
+}
+
+.favorites-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
 }
 
 .favorite-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: rgba(255,255,255,0.25);
+  justify-content: center;
+  width: 50%;
+  backdrop-filter: blur(10px);
   padding: 6px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.4);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   transition: background 0.3s ease;
 }
 
-.favorite-item:hover {
-  background: rgba(255,255,255,0.35);
-}
-
 .favorite-item span {
+  text-align: center;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 1.5rem;
   cursor: pointer;
-  color: #fff;
+  color: whitesmoke;
   font-weight: 600;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
 }
 
 .favorite-item span:hover {
   text-decoration: underline;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
 }
 
 .remove-btn {
-  background: transparent;
-  color: #fff;
+  margin-left: auto;
+  width: 50px;
+  max-width: 5rem;
+  color: whitesmoke;
   border: none;
-  font-size: 1.2rem;
+  font-size: 1rem;
   cursor: pointer;
   transition: color 0.2s ease;
 }
