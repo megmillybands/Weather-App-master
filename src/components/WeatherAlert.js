@@ -8,7 +8,10 @@ const WeatherAlert = ({ type, title, description }) => {
     if (lowerCaseType.includes(" no alert")) {
         return null;
     }
-    if (lowerCaseType.includes("rain")) {
+  
+
+    
+  if (lowerCaseType.includes("rain")) {
       return {
         title: "Heavy Rain Alert",
         description: "Expect heavy rainfall in your area.",

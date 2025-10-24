@@ -15,6 +15,7 @@ function Weather() {
 
   const openWeatherApiKey = "e54b1a91b15cfa9a227758fc1e6b5c27";
 
+  
   const getAlertTypeFromWeather = (data) => {
     if (!data?.weather?.length) return null;
     const desc = data.weather[0].description.toLowerCase();
@@ -39,6 +40,7 @@ function Weather() {
   useEffect(() => {
     localStorage.setItem("favoriteCities", JSON.stringify(favorites));
   }, [favorites]);
+
 
   const getWeather = async (cityName = city) => {
     try {
