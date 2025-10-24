@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import WeatherAlert from "./WeatherAlert";
+import IssueReport from "./IssueReport";
 import "../App.css";
 
 function Weather() {
@@ -10,9 +11,11 @@ function Weather() {
   const [error, setError] = useState("");
   const [favorites, setFavorites] = useState([]);
   const [activeAlert, setActiveAlert] = useState(null);
+  const [showIssueReport, setShowIssueReport] = useState(false);
 
-  const apiKey = "e54b1a91b15cfa9a227758fc1e6b5c27";
+  const openWeatherApiKey = "e54b1a91b15cfa9a227758fc1e6b5c27";
 
+  
   const getAlertTypeFromWeather = (data) => {
     if (!data?.weather?.length) return null;
     const desc = data.weather[0].description.toLowerCase();
@@ -36,10 +39,11 @@ function Weather() {
     localStorage.setItem("favoriteCities", JSON.stringify(favorites));
   }, [favorites]);
 
+
   const getWeather = async (cityName = city) => {
     try {
       const res = await axios.get(
-        `https://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${apiKey}&units=metric`
+        `https://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${openWeatherApiKey}&units=metric`
       );
       setWeather(res.data);
       setError("");
@@ -56,7 +60,7 @@ function Weather() {
   const getForecast = async (cityName) => {
     try {
       const res = await axios.get(
-        `https://api.openweathermap.org/data/2.5/forecast?q=${cityName}&appid=${apiKey}&units=metric`
+        `https://api.openweathermap.org/data/2.5/forecast?q=${cityName}&appid=${openWeatherApiKey}&units=metric`
       );
       const grouped = {};
       res.data.list.forEach((e) => {
@@ -73,10 +77,6 @@ function Weather() {
     if (weather && !favorites.includes(weather.name)) {
       setFavorites([...favorites, weather.name]);
     }
-  };
-
-  const removeFromFavorites = (cityName) => {
-    setFavorites(favorites.filter((f) => f !== cityName));
   };
 
   const updateBackground = (type) => {
@@ -139,18 +139,12 @@ function Weather() {
               {isFavorite ? "⭐ Saved" : "☆ Save to Favorites"}
             </button>
 
-            {activeAlert ? (
-              <WeatherAlert type={activeAlert} />
-            ) : (
-              <div className="no-alert-message centered">No active weather alerts 🌤️</div>
-            )}
-
             {forecast.length > 0 && (
               <div className="forecast-container fade-in">
                 <h3>5-Day Forecast</h3>
                 <div className="forecast-grid">
                   {forecast.map((day, index) => (
-                    <div key={index} className="forecast-card">
+                    <div key={day.dt_txt} className="forecast-card">
                       <strong>
                         {new Date(day.dt_txt).toLocaleDateString("en-US", {
                           weekday: "short",
@@ -168,23 +162,21 @@ function Weather() {
                 </div>
               </div>
             )}
-          </div>
-        )}
 
-        {favorites.length > 0 && (
-          <div className="favorites-section fade-in">
-            <h3>Your Favorite Cities</h3>
-            <div className="favorites-list">
-              {favorites.map((fav) => (
-                <div key={fav} className="favorite-item">
-                  <span onClick={() => getWeather(fav)} id="favorite-city">
-                    {fav}
-                  </span>
-                  <button onClick={() => removeFromFavorites(fav)} className="remove-btn">
-                    ✕
-                  </button>
-                </div>
-              ))}
+            {activeAlert ? (
+              <WeatherAlert type={activeAlert} />
+            ) : (
+              <div className="no-alert-message centered">No active weather alerts 🌤️</div>
+            )}
+
+            <div className="issue-report-section">
+              <div
+                className={`report-issue-toggle ${showIssueReport ? "open" : ""}`}
+                onClick={() => setShowIssueReport(!showIssueReport)}
+              >
+                {showIssueReport ? "Close" : "Report an Issue"}
+              </div>
+              {showIssueReport && <IssueReport />}
             </div>
           </div>
         )}
