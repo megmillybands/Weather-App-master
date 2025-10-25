@@ -7,49 +7,116 @@ function Weather() {
   const [city, setCity] = useState("");
   const [weather, setWeather] = useState(null);
   const [forecast, setForecast] = useState([]);
-  const [error, setError] = useState("");
   const [favorites, setFavorites] = useState([]);
   const [activeAlert, setActiveAlert] = useState(null);
+  const [favoritesLoaded, setFavoritesLoaded] = useState(false);
 
   const apiKey = "e54b1a91b15cfa9a227758fc1e6b5c27";
+  const baseUrl = "https://unit-4-project-app-24d5eea30b23.herokuapp.com";
+  const teamId = 3;
+
+  // Set default background on mount
+  useEffect(() => {
+    const overlay = document.querySelector(".background-overlay");
+    if (overlay) {
+      overlay.style.background =
+        "linear-gradient(-45deg, #89f7fe, #66a6ff, #a1c4fd, #c2e9fb)";
+      overlay.style.backgroundSize = "400% 400%";
+      overlay.style.animation = "gradientMove 15s ease infinite";
+      overlay.style.opacity = 1;
+    }
+  }, []);
+
+  // Load favorites from backend or localStorage
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      try {
+        const res = await axios.get(`${baseUrl}/get/all?teamId=${teamId}`);
+        const cityNames = res.data.map((record) => record.name);
+        setFavorites(cityNames);
+        localStorage.setItem("favoriteCities", JSON.stringify(cityNames));
+      } catch {
+        const saved = localStorage.getItem("favoriteCities");
+        if (saved) setFavorites(JSON.parse(saved));
+      } finally {
+        setFavoritesLoaded(true);
+      }
+    };
+    fetchFavorites();
+  }, []);
+
+  const updateFavorites = async (newFavorites) => {
+    setFavorites(newFavorites);
+    localStorage.setItem("favoriteCities", JSON.stringify(newFavorites));
+  };
+
+ const addToFavorites = async () => {
+  if (weather && !favorites.includes(weather.name)) {
+    const newFavorites = [...favorites, weather.name];
+    updateFavorites(newFavorites);
+    try {
+      await axios.post(`${baseUrl}/post/data?teamId=${teamId}`, {
+        name: weather.name,
+        temperature: weather.main.temp,
+        condition: weather.weather[0].main,
+      });
+    } catch (err) {
+      console.error("Error saving favorite to backend:", err);
+    }
+  }
+};
+
+const removeFromFavorites = async (cityName) => {
+  const newFavorites = favorites.filter((f) => f !== cityName);
+  updateFavorites(newFavorites);
+  try {
+    const allRecords = await axios.get(`${baseUrl}/get/all?teamId=${teamId}`);
+    const record = allRecords.data.find((r) => r.name === cityName);
+    if (record) {
+      await axios.delete(`${baseUrl}/delete/data/${record.id}?teamId=${teamId}`);
+    }
+  } catch (err) {
+    console.error("Error deleting favorite from backend:", err);
+  }
+};
 
   const getAlertTypeFromWeather = (data) => {
     if (!data?.weather?.length) return null;
     const desc = data.weather[0].description.toLowerCase();
     const temp = data.main.temp;
-    if (desc.includes("tornado")) return "Tornado Warning";
-    if (desc.includes("thunderstorm")) return "Severe Thunderstorm";
-    if (desc.includes("rain")) return "Heavy Rain Alert";
-    if (desc.includes("snow")) return "Winter Snow Advisory";
-    if (desc.includes("hail") || desc.includes("sleet")) return "Hail/Sleet Hazard";
-    if (desc.includes("fog") || desc.includes("mist")) return "Dense Fog Advisory";
-    if (temp > 32) return "High Heat/UV Advisory";
+
+    if (desc.includes("tornado"))
+      return { title: "Tornado Warning", description: "Take shelter immediately!" };
+    if (desc.includes("thunderstorm"))
+      return { title: "Severe Thunderstorm", description: "Thunderstorms expected. Stay safe." };
+    if (desc.includes("rain"))
+      return { title: "Heavy Rain Alert", description: "Rainfall may be heavy. Drive carefully." };
+    if (desc.includes("snow"))
+      return { title: "Winter Snow Advisory", description: "Snow expected. Dress warmly." };
+    if (desc.includes("hail") || desc.includes("sleet"))
+      return { title: "Hail/Sleet Hazard", description: "Potential hail/sleet. Take precautions." };
+    if (desc.includes("fog") || desc.includes("mist"))
+      return { title: "Dense Fog Advisory", description: "Visibility may be low. Drive carefully." };
+    if (temp > 32)
+      return { title: "High Heat/UV Advisory", description: "High temperatures. Stay hydrated." };
     return null;
   };
 
-  useEffect(() => {
-    const saved = localStorage.getItem("favoriteCities");
-    if (saved) setFavorites(JSON.parse(saved));
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("favoriteCities", JSON.stringify(favorites));
-  }, [favorites]);
-
   const getWeather = async (cityName = city) => {
+    if (!cityName) return;
     try {
       const res = await axios.get(
         `https://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${apiKey}&units=metric`
       );
       setWeather(res.data);
-      setError("");
       setActiveAlert(getAlertTypeFromWeather(res.data));
       updateBackground(res.data.weather[0].main);
       getForecast(cityName);
     } catch {
-      setError("City not found!");
       setWeather(null);
       setForecast([]);
+      setActiveAlert(null);
+      alert("City not found!");
     }
   };
 
@@ -58,25 +125,34 @@ function Weather() {
       const res = await axios.get(
         `https://api.openweathermap.org/data/2.5/forecast?q=${cityName}&appid=${apiKey}&units=metric`
       );
+
       const grouped = {};
-      res.data.list.forEach((e) => {
-        const date = new Date(e.dt_txt).toLocaleDateString("en-US", { weekday: "short" });
-        if (!grouped[date]) grouped[date] = e;
+      res.data.list.forEach((entry) => {
+        const date = new Date(entry.dt_txt).toLocaleDateString("en-US", { weekday: "short" });
+        if (!grouped[date]) grouped[date] = [];
+        grouped[date].push(entry);
       });
-      setForecast(Object.values(grouped).slice(0, 5));
+
+      const dailyForecast = Object.values(grouped).slice(0, 5).map((dayEntries) => {
+        const date = new Date(dayEntries[0].dt_txt);
+        const temps = dayEntries.map((e) => e.main.temp);
+        const highC = Math.max(...temps);
+        const lowC = Math.min(...temps);
+        return {
+          date: date.toLocaleDateString("en-US", { weekday: "short" }),
+          highC,
+          lowC,
+          highF: (highC * 9) / 5 + 32,
+          lowF: (lowC * 9) / 5 + 32,
+          icon: dayEntries[0].weather[0].icon,
+          main: dayEntries[0].weather[0].main,
+        };
+      });
+
+      setForecast(dailyForecast);
     } catch (e) {
       console.error("Forecast fetch error:", e);
     }
-  };
-
-  const addToFavorites = () => {
-    if (weather && !favorites.includes(weather.name)) {
-      setFavorites([...favorites, weather.name]);
-    }
-  };
-
-  const removeFromFavorites = (cityName) => {
-    setFavorites(favorites.filter((f) => f !== cityName));
   };
 
   const updateBackground = (type) => {
@@ -107,6 +183,8 @@ function Weather() {
 
   const isFavorite = weather && favorites.includes(weather.name);
 
+  if (!favoritesLoaded) return <div className="loading-placeholder">Loading favorites...</div>;
+
   return (
     <>
       <div className="background-overlay"></div>
@@ -124,13 +202,30 @@ function Weather() {
           <button onClick={() => getWeather()}>Search</button>
         </div>
 
-        {error && <p className="error">{error}</p>}
+        {/* Favorite cities always visible as buttons */}
+        {favorites.length > 0 && (
+          <div className="favorites-section">
+            <h3>Your Favorite Cities</h3>
+            <div className="favorites-buttons">
+              {favorites.map((fav) => (
+                <div key={fav} className="favorite-item">
+                  <span onClick={() => getWeather(fav)}>{fav}</span>
+                  <button className="remove-btn" onClick={() => removeFromFavorites(fav)}>
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
+        {/* Weather info only shows after selecting a city */}
         {weather && (
           <div className="weather-info fade-in">
             <h3>{weather.name}</h3>
             <p>
-              🌡️ {weather.main.temp}°C ({((weather.main.temp * 9) / 5 + 32).toFixed(1)}°F)
+              🌡️ {weather.main.temp.toFixed(1)}°C (
+              {((weather.main.temp * 9) / 5 + 32).toFixed(1)}°F)
             </p>
             <p>☁️ {weather.weather[0].description}</p>
             <p>💨 Wind: {weather.wind.speed} m/s</p>
@@ -142,50 +237,29 @@ function Weather() {
             {activeAlert ? (
               <WeatherAlert type={activeAlert} />
             ) : (
-              <div className="no-alert-message centered">No active weather alerts 🌤️</div>
+              <div className="no-alert-message">No active weather alerts 🌤️</div>
             )}
 
             {forecast.length > 0 && (
-              <div className="forecast-container fade-in">
-                <h3>5-Day Forecast</h3>
-                <div className="forecast-grid">
-                  {forecast.map((day, index) => (
-                    <div key={index} className="forecast-card">
-                      <strong>
-                        {new Date(day.dt_txt).toLocaleDateString("en-US", {
-                          weekday: "short",
-                        })}
-                      </strong>
-                      <img
-                        className="weather-icon"
-                        src={`https://openweathermap.org/img/wn/${day.weather[0].icon}@2x.png`}
-                        alt={day.weather[0].description}
-                      />
-                      <p>{day.weather[0].main}</p>
-                      <p>{Math.round(day.main.temp)}°C</p>
-                    </div>
-                  ))}
-                </div>
+              <div className="forecast-container">
+                {forecast.map((day, i) => (
+                  <div key={i} className="forecast-day">
+                    <strong>{day.date}</strong>
+                    <img
+                      src={`https://openweathermap.org/img/wn/${day.icon}@2x.png`}
+                      alt={day.main}
+                    />
+                    <p>{day.main}</p>
+                    <p>
+                      H: {Math.round(day.highC)}°C / {Math.round(day.highF)}°F
+                    </p>
+                    <p>
+                      L: {Math.round(day.lowC)}°C / {Math.round(day.lowF)}°F
+                    </p>
+                  </div>
+                ))}
               </div>
             )}
-          </div>
-        )}
-
-        {favorites.length > 0 && (
-          <div className="favorites-section fade-in">
-            <h3>Your Favorite Cities</h3>
-            <div className="favorites-list">
-              {favorites.map((fav) => (
-                <div key={fav} className="favorite-item">
-                  <span onClick={() => getWeather(fav)} id="favorite-city">
-                    {fav}
-                  </span>
-                  <button onClick={() => removeFromFavorites(fav)} className="remove-btn">
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
           </div>
         )}
       </div>
