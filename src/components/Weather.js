@@ -12,9 +12,11 @@ function Weather() {
   const [favorites, setFavorites] = useState([]);
   const [activeAlert, setActiveAlert] = useState(null);
   const [showIssueReport, setShowIssueReport] = useState(false);
+  const [airQuality, setAirQuality] = useState({ status: 'idle' });
 
   const openWeatherApiKey = "e54b1a91b15cfa9a227758fc1e6b5c27";
-
+  const WAQI_API_TOKEN = "62cf31c65a6a5aa1beb30b397e2b00378f1586c9"; // <-- PASTE YOUR TOKEN FROM https://aqicn.org/data-platform/token/
+  
   
   const getAlertTypeFromWeather = (data) => {
     if (!data?.weather?.length) return null;
@@ -41,6 +43,40 @@ function Weather() {
     localStorage.setItem("favoriteCities", JSON.stringify(favorites));
   }, [favorites]);
 
+  const getAirQuality = async (lat, lon) => {
+    if (WAQI_API_TOKEN === "YOUR_WAQI_API_TOKEN_HERE") {
+      console.warn("WAQI API token is not set. Air quality feature is disabled.");
+      setAirQuality({ status: 'error', error: 'API token not configured.' });
+      return;
+    }
+    setAirQuality({ status: 'loading' });
+    try {
+      const response = await axios.get(`https://api.waqi.info/feed/geo:${lat};${lon}/?token=${WAQI_API_TOKEN}`);
+      const { data } = response;
+      if (data.status === 'ok' && data.data.aqi) {
+        const aqi = data.data.aqi;
+        let category;
+        if (aqi <= 50) category = 'Good';
+        else if (aqi <= 100) category = 'Moderate';
+        else if (aqi <= 150) category = 'Unhealthy for Sensitive Groups';
+        else if (aqi <= 200) category = 'Unhealthy';
+        else if (aqi <= 300) category = 'Very Unhealthy';
+        else category = 'Hazardous';
+        setAirQuality({ status: 'success', data: { aqi, category } });
+      } else {
+        setAirQuality({ status: 'error', error: 'Data not available.' });
+      }
+    } catch (error) {
+      console.error('Error fetching air quality:', error);
+      setAirQuality({ status: 'error', error: 'Could not fetch data.' });
+    }
+  };
+
+  useEffect(() => {
+    if (weather?.coord) {
+      getAirQuality(weather.coord.lat, weather.coord.lon);
+    }
+  }, [weather]);
 
   const getWeather = async (cityName = city) => {
     try {
@@ -55,6 +91,7 @@ function Weather() {
     } catch {
       setError("City not found!");
       setWeather(null);
+      setAirQuality({ status: 'idle' });
       setForecast([]);
     }
   };
@@ -159,6 +196,15 @@ function Weather() {
             <p>☁️ {weather.weather[0].description}</p>
             <p>💨 Wind: {weather.wind.speed} m/s</p>
 
+            {airQuality.status === 'loading' && <p>🌬️ Air Quality Index: Loading...</p>}
+            {airQuality.status === 'error' && <p>🌬️ Air Quality Index: Not available</p>}
+            {airQuality.status === 'success' && (
+              <p>
+                🌬️ Air Quality Index: <strong>{airQuality.data.aqi}</strong> ({airQuality.data.category})
+              </p>
+            )}
+
+
             <button onClick={favoritesButtonPress} className="favorite-btn">
               {isFavorite ? "⭐ Saved" : "☆ Save to Favorites"}
             </button>
@@ -172,15 +218,6 @@ function Weather() {
             No active weather alerts 🌤️
           </div>
         )}
-
-        <div className="issue-report-section">
-          <div
-            className={`report-issue-toggle ${showIssueReport ? "open" : ""}`}
-            onClick={() => setShowIssueReport(!showIssueReport)}
-          >
-            {showIssueReport ? "Close" : "Report an Issue"}
-          </div>
-        </div>
 
         {forecast.length > 0 && (
           <div className="forecast-container fade-in">
@@ -206,6 +243,16 @@ function Weather() {
           </div>
         )}
 
+        <div className="issue-report-section">
+          <div
+            className={`report-issue-toggle ${showIssueReport ? "open" : ""}`}
+            onClick={() => setShowIssueReport(!showIssueReport)}
+          >
+            {showIssueReport ? "Close" : "Report an Issue"}
+          </div>
+          {showIssueReport && <IssueReport />}
+        </div>
+
         {favorites.length > 0 && (
           <div className="favorites-section fade-in">
             <h3>Your Favorite Cities</h3>
@@ -226,7 +273,6 @@ function Weather() {
                   </button>
                 </div>
               ))}
-              {showIssueReport && <IssueReport />}
             </div>
           </div>
         )}

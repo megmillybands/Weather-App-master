@@ -23,7 +23,7 @@ const IssueReport = () => {
   return (
     <div className="issue-report-box-container fade-in">
       <h3>Report an Issue</h3>
-    <p> You can describe the current conditions at your location to help improve forecasts.</p>
+      <p>Describe the current conditions at your location to help improve forecasts.</p>
       <form onSubmit={handleSubmit}>
         <textarea value={issueDescription} onChange={(e) => setIssueDescription(e.target.value)} placeholder="Describe the issue..." required />
         <button type="submit">Submit Issue</button>
