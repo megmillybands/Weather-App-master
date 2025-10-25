@@ -162,6 +162,17 @@ function Weather() {
       overlay.style.opacity = 1;
     }, 500);
   };
+  const getLocalTime = () => {
+  if (!weather?.timezone) return null;
+  const now = new Date();
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const localTime = new Date(utc + (weather.timezone * 1000));
+  return localTime.toLocaleTimeString('en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: true 
+  });
+};
 
   return (
     <>
@@ -189,6 +200,7 @@ function Weather() {
         {weather && (
           <div className="weather-info fade-in">
             <h3>{weather.name}</h3>
+            <p>🕐 Local Time: {getLocalTime()}</p>
             <p>
               🌡️ {Math.round(weather.main.temp)}°C ({Math.round((weather.main.temp * 9) / 5 + 32)}°F)
             </p>
