@@ -13,14 +13,16 @@ import {
 
 function Weather() {
   const [city, setCity] = useState("");
+  const [state, setState] = useState("");
   const [weather, setWeather] = useState(null);
   const [forecast, setForecast] = useState([]);
-  const [records, setRecords] = useState([]); // [{ id, body:{ name, favorite, ... } }]
+  const [records, setRecords] = useState([]); 
   const [recordsLoaded, setRecordsLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [activeAlert, setActiveAlert] = useState(null);
   const [airQuality, setAirQuality] = useState({ status: "idle" });
-  const [showIssueReport, setShowIssueReport] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [showFavorites, setShowFavorites] = useState(true);
 
   const openWeatherApiKey = "e54b1a91b15cfa9a227758fc1e6b5c27";
   const WAQI_API_TOKEN = "62cf31c65a6a5aa1beb30b397e2b00378f1586c9";
@@ -35,16 +37,16 @@ function Weather() {
     );
   };
 
-const favoriteRecords = records.filter(
-  (r) => r?.data_json?.favorite === true
-);
+  const favoriteRecords = records.filter(
+    (r) => r?.body?.favorite === true
+  );
 
-const setFavoriteFromRecords = (name) => {
-  const rec = recordForCity(name); // or however you get the record
-  setIsFavorite(rec?.data_json?.favorite === true);
-};
+  const setFavoriteFromRecords = (name) => {
+    const rec = recordForCity(name);
+    setIsFavorite(rec?.body?.favorite === true);
+  };
 
-  // ---------- Load saved records on start ----------
+  
   useEffect(() => {
     const load = async () => {
       try {
@@ -59,7 +61,7 @@ const setFavoriteFromRecords = (name) => {
     load();
   }, []);
 
-  // ---------- Background ----------
+  
   const updateBackground = (type) => {
     const overlay = document.querySelector(".background-overlay");
     if (!overlay) return;
@@ -86,7 +88,7 @@ const setFavoriteFromRecords = (name) => {
     }, 500);
   };
 
-  // ---------- Alerts ----------
+  
   const getAlertTypeFromWeather = (data) => {
     if (!data?.weather?.length) return null;
     const desc = data.weather[0].description.toLowerCase();
@@ -177,12 +179,21 @@ const setFavoriteFromRecords = (name) => {
 
   // ---------- Weather (S2: no backend writes on search) ----------
   const getWeather = async (cityName = city) => {
-    if (!cityName) return;
+    let searchCity = cityName.trim();
+    let searchState = state.trim().toUpperCase();
+
+    if (!searchCity || isLoading) return;
+    setIsLoading(true);
+
+    let query = searchCity;
+    if (searchState) {
+      query = `${searchCity},${searchState},US`;
+    }
 
     try {
       const res = await axios.get(
         `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(
-          cityName
+          query
         )}&appid=${openWeatherApiKey}&units=metric`
       );
       const data = res.data;
@@ -202,6 +213,8 @@ const setFavoriteFromRecords = (name) => {
       setActiveAlert(null);
       setAirQuality({ status: "idle" });
       alert("City not found!");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -246,18 +259,55 @@ const setFavoriteFromRecords = (name) => {
     setIsFavorite(next);
 
     try {
-      await saveFavoriteCity(payload);
-
-      // Refresh list from backend
-      const updated = await getAllRecords();
-      setRecords(Array.isArray(updated) ? updated : []);
-
-      // Reconcile isFavorite from fresh records
-      setFavoriteFromRecords(weather.name);
+      const savedRecord = await saveFavoriteCity(payload);
+      if (!savedRecord) throw new Error("Save operation did not return a record.");
+      // Update the local records array with the new/updated record
+      setRecords(prevRecords => {
+        const index = prevRecords.findIndex(r => r.id === savedRecord.id);
+        if (index > -1) {
+          // Replace existing record
+          const newRecords = [...prevRecords];
+          newRecords[index] = savedRecord;
+          return newRecords;
+        } else {
+          // Add new record
+          return [...prevRecords, savedRecord];
+        }
+      });
     } catch (e) {
       console.error("Favorite toggle failed:", e);
-      // Rollback if save failed
       setIsFavorite(!next);
+    }
+  };
+
+  const toggleFavoriteFromList = async (cityName) => {
+    const record = recordForCity(cityName);
+    if (!record) return;
+
+    const next = !record.body.favorite;
+
+    const updatedBody = { ...record.body, favorite: next };
+    const payload = { id: record.id, body: updatedBody };
+
+    // Optimistic update
+    setRecords(prevRecords =>
+      prevRecords.map(r => (r.id === record.id ? { ...r, body: updatedBody } : r))
+    );
+    if (weather && weather.name.toLowerCase() === cityName.toLowerCase()) {
+      setIsFavorite(next);
+    }
+
+    try {
+      const savedRecord = await saveFavoriteCity(payload);
+      if (!savedRecord) throw new Error("Save operation did not return a record.");
+      // If the API call succeeds, the state is already updated.
+      // If it fails, we revert the change.
+    } catch (e) {
+      console.error("Favorite toggle from list failed:", e);
+      // Revert optimistic update on failure
+      setRecords(prevRecords =>
+        prevRecords.map(r => (r.id === record.id ? record : r))
+      );
     }
   };
 
@@ -266,14 +316,16 @@ const setFavoriteFromRecords = (name) => {
     const rec = recordForCity(cityName);
     if (!rec?.id) return;
     try {
-      await deleteRecordById(rec.id);
-      const updated = await getAllRecords();
-      setRecords(Array.isArray(updated) ? updated : []);
       if (weather && weather.name.toLowerCase() === cityName.toLowerCase()) {
         setIsFavorite(false);
       }
+      // Make API call
+      await deleteRecordById(rec.id);
+      // After successful deletion, update the state to remove the record
+      setRecords(prevRecords => prevRecords.filter((r) => r.id !== rec.id));
     } catch (e) {
       console.error("Error deleting record:", e);
+      alert("Failed to delete city. Please try again.");
     }
   };
 
@@ -306,22 +358,32 @@ const setFavoriteFromRecords = (name) => {
             onChange={(e) => setCity(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && getWeather()}
           />
-        <button onClick={() => getWeather()}>Search</button>
+          <input
+            type="text"
+            placeholder="State (e.g., CA)"
+            value={state}
+            onChange={(e) => setState(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && getWeather()}
+            style={{ width: '120px', marginLeft: '8px' }}
+          />
+        <button onClick={() => getWeather()} disabled={isLoading}>{isLoading ? "Searching..." : "Search"}</button>
         </div>
 
         {weather && (
           <div className="weather-info fade-in">
-            <h3>{weather.name}</h3>
-            <p>🕐 Local Time: {getLocalTime()}</p>
-            <p>
+            <h3 className="readable-text">{weather.name}</h3>
+            <p className="readable-text">
+              🕐 Local Time: {getLocalTime()}
+            </p>
+            <p className="readable-text">
               🌡️ {weather.main.temp.toFixed(1)}°C (
               {((weather.main.temp * 9) / 5 + 32).toFixed(1)}°F)
             </p>
-            <p>☁️ {weather.weather[0].description}</p>
-            <p>💨 Wind: {weather.wind.speed} m/s</p>
+            <p className="readable-text">☁️ {weather.weather[0].description}</p>
+            <p className="readable-text">💨 Wind: {weather.wind.speed} m/s</p>
 
             {airQuality.status === "success" && (
-              <p>
+              <p className="readable-text">
                 🌬️ AQI: <strong>{airQuality.data.aqi}</strong> (
                 {airQuality.data.category})
               </p>
@@ -340,31 +402,6 @@ const setFavoriteFromRecords = (name) => {
               {isFavorite ? "Favorited" : "Favorite"}
             </button>
 
-            {/* Your Cities (L2: show only favorited) */}
-            {favoriteRecords.length > 0 && (
-              <div className="favorites-section" style={{ marginTop: 16 }}>
-                <h3>Your Cities</h3>
-                <div className="favorites-buttons">
-                  {favoriteRecords.map((r) => (
-                    <div key={r.id ?? r.body?.name} className="favorite-item">
-                      <span onClick={() => getWeather(r.body?.name)}>
-                        {/* show star based on favorite */}
-                        {r.body?.favorite ? "★ " : "☆ "}
-                        {r.body?.name}
-                      </span>
-                      <button
-                        className="remove-btn"
-                        onClick={() => deleteCityRecord(r.body?.name)}
-                        title="Remove from favorites"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {activeAlert ? (
               <WeatherAlert type={activeAlert} />
             ) : (
@@ -381,8 +418,12 @@ const setFavoriteFromRecords = (name) => {
                       alt={day.main}
                     />
                     <p>{day.main}</p>
-                    <p>H: {Math.round(day.highC)}°C / {Math.round(day.highF)}°F</p>
-                    <p>L: {Math.round(day.lowC)}°C / {Math.round(day.lowF)}°F</p>
+                    <p>
+                      H: {Math.round(day.highC)}°C / {Math.round(day.highF)}°F
+                    </p>
+                    <p>
+                      L: {Math.round(day.lowC)}°C / {Math.round(day.lowF)}°F
+                    </p>
                   </div>
                 ))}
               </div>
@@ -390,15 +431,51 @@ const setFavoriteFromRecords = (name) => {
           </div>
         )}
 
-        <div className="issue-report-section">
-          <div
-            className={`report-issue-toggle ${showIssueReport ? "open" : ""}`}
-            onClick={() => setShowIssueReport(!showIssueReport)}
-          >
-            {showIssueReport ? "Close" : "Report an Issue"}
+        {/* Your Cities (L2: show only favorited) */}
+        {favoriteRecords.length > 0 && (
+          <div className="favorites-section fade-in" style={{ marginTop: 16 }}>
+            <h3
+              onClick={() => setShowFavorites(!showFavorites)}
+              style={{ cursor: "pointer" }}
+            >
+              Your Cities {showFavorites ? "▼" : "►"}
+            </h3>
+            {showFavorites && (
+              <div className="favorites-buttons">
+                {favoriteRecords.map((r) => (
+                  <div key={r.id ?? r.body?.name} className="favorite-item">
+                    <span
+                      className="favorite-item-star"
+                      style={r.body?.favorite ? starStyleOn : starStyleOff}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavoriteFromList(r.body?.name);
+                      }}
+                    >
+                      {r.body?.favorite ? "★" : "☆"}
+                    </span>
+                    <span className="favorite-item-name" onClick={() => {
+                      getWeather(r.body?.name);
+                    }}>
+                      {r.body?.name}
+                    </span>
+                    <button
+                      className="remove-btn"
+                      onClick={(e) => { e.stopPropagation(); deleteCityRecord(r.body?.name); }}
+                      title="Remove from favorites"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          {showIssueReport && <IssueReport />}
-        </div>
+        )}
+
+        {weather && (
+          <IssueReport />
+        )}
       </div>
     </>
   );

@@ -22,24 +22,26 @@ export const getAllRecords = async () => {
  */
 export const createRecord = async (body) => {
   // body is the inner "body" object (name, temperature, weather, wind, AQI, favorite)
-  await axios.post(`${BASE_URL}/post/data`, {
+  const res = await axios.post(`${BASE_URL}/post/data`, {
     team: TEAM,
     body,
   });
+  return res.data;
 };
 
 /**
  * Update an existing record by id
  */
 export const updateRecord = async (id, body) => {
-  await axios.put(`${BASE_URL}/post/data/${id}`, {
+  const res = await axios.put(`${BASE_URL}/post/data/${id}`, {
     team: TEAM,
     body,
   });
+  return res.data;
 };
 
 /**
- * Save (create or update) a city record. If id exists → PUT, else POST.
+ * Save (create or update) a city record. If id exists -> PUT, else POST.
  */
 export const saveFavoriteCity = async ({ id, body }) => {
   if (id) {
