@@ -5,54 +5,41 @@ const BASE_URL = "https://unit-4-project-app-24d5eea30b23.herokuapp.com";
 const TEAM = 3;
 
 /**
- * Get ALL saved records for your team.
- * Assumes backend supports GET /post/data?team=3
- * (If backend ignores the query param it will still return all, we filter in UI.)
+ * The backend in class has a few styles. To be robust:
+ * - Read:  GET /get/all?teamId=3  -> { response: [...] }
+ * - Create: POST /post/data       -> { id, body, ... }
+ * - Update: PUT  /post/data/:id   -> { id, body, ... }
+ * - Delete: DELETE /post/data/:id -> 204 or { ok: true }
  */
+
 export const getAllRecords = async () => {
-  const res = await axios.get(`${BASE_URL}/post/data`, {
-    params: { team: TEAM },
+  const res = await axios.get(`${BASE_URL}/get/all`, {
+    params: { teamId: TEAM },
   });
-  // Expecting array like: [{ id, body: { name, temperature, weather, wind, AQI, favorite } }, ...]
-  return Array.isArray(res.data) ? res.data : [];
+  const payload = res?.data?.response ?? res?.data ?? [];
+  return Array.isArray(payload) ? payload : [];
 };
 
-/**
- * Create a new record
- */
 export const createRecord = async (body) => {
-  // body is the inner "body" object (name, temperature, weather, wind, AQI, favorite)
   const res = await axios.post(`${BASE_URL}/post/data`, {
     team: TEAM,
     body,
   });
-  return res.data;
+  return res?.data;
 };
 
-/**
- * Update an existing record by id
- */
 export const updateRecord = async (id, body) => {
   const res = await axios.put(`${BASE_URL}/post/data/${id}`, {
     team: TEAM,
     body,
   });
-  return res.data;
+  return res?.data;
 };
 
-/**
- * Save (create or update) a city record. If id exists -> PUT, else POST.
- */
-export const saveFavoriteCity = async ({ id, body }) => {
-  if (id) {
-    return updateRecord(id, body);
-  }
-  return createRecord(body);
+export const saveRecord = async ({ id, body }) => {
+  return id ? updateRecord(id, body) : createRecord(body);
 };
 
-/**
- * Delete record by id
- */
 export const deleteRecordById = async (id) => {
   await axios.delete(`${BASE_URL}/post/data/${id}`);
 };

@@ -7,22 +7,35 @@ import "../App.css";
 
 import {
   getAllRecords,
-  saveFavoriteCity,
+  saveRecord,
   deleteRecordById,
 } from "./PostmanAPI";
+
+/**
+ * Key upgrades:
+ * 1) Robust search: tries q=city[,state], then falls back to Geocoding API to support inputs like "Water Valley".
+ * 2) Per-user favorites: records include { user }, filtered to current user.
+ * 3) Optimistic favorite toggle that's resilient and doesn't flip back.
+ * 4) Clean error states (no alert boxes) + bogus-input handling.
+ * 5) IssueReport writes to your class API.
+ */
 
 function Weather() {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
+  const [username, setUsername] = useState(""); // per-user identity
+
   const [weather, setWeather] = useState(null);
   const [forecast, setForecast] = useState([]);
-  const [records, setRecords] = useState([]); 
+  const [records, setRecords] = useState([]);
   const [recordsLoaded, setRecordsLoaded] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
   const [activeAlert, setActiveAlert] = useState(null);
   const [airQuality, setAirQuality] = useState({ status: "idle" });
   const [isFavorite, setIsFavorite] = useState(false);
   const [showFavorites, setShowFavorites] = useState(true);
+  const [error, setError] = useState("");
 
   const openWeatherApiKey = "e54b1a91b15cfa9a227758fc1e6b5c27";
   const WAQI_API_TOKEN = "62cf31c65a6a5aa1beb30b397e2b00378f1586c9";
@@ -32,13 +45,17 @@ function Weather() {
     const key = String(name || "").toLowerCase();
     return (
       records.find(
-        (r) => String(r?.body?.name || "").toLowerCase() === key
+        (r) =>
+          String(r?.body?.name || "").toLowerCase() === key &&
+          String(r?.body?.user || "").toLowerCase() === String(username).toLowerCase()
       ) || null
     );
   };
 
   const favoriteRecords = records.filter(
-    (r) => r?.body?.favorite === true
+    (r) =>
+      r?.body?.favorite === true &&
+      String(r?.body?.user || "").toLowerCase() === String(username).toLowerCase()
   );
 
   const setFavoriteFromRecords = (name) => {
@@ -46,7 +63,7 @@ function Weather() {
     setIsFavorite(rec?.body?.favorite === true);
   };
 
-  
+  // Load all records once (then we filter by username in-memory)
   useEffect(() => {
     const load = async () => {
       try {
@@ -61,7 +78,7 @@ function Weather() {
     load();
   }, []);
 
-  
+  // ---------- Background ----------
   const updateBackground = (type) => {
     const overlay = document.querySelector(".background-overlay");
     if (!overlay) return;
@@ -88,7 +105,7 @@ function Weather() {
     }, 500);
   };
 
-  
+  // ---------- Alerts ----------
   const getAlertTypeFromWeather = (data) => {
     if (!data?.weather?.length) return null;
     const desc = data.weather[0].description.toLowerCase();
@@ -113,10 +130,9 @@ function Weather() {
     if (!WAQI_API_TOKEN) return;
     setAirQuality({ status: "loading" });
     try {
-      const response = await axios.get(
+      const { data } = await axios.get(
         `https://api.waqi.info/feed/geo:${lat};${lon}/?token=${WAQI_API_TOKEN}`
       );
-      const { data } = response;
       if (data.status === "ok" && data.data.aqi != null) {
         const aqi = data.data.aqi;
         let category;
@@ -128,10 +144,10 @@ function Weather() {
         else category = "Hazardous";
         setAirQuality({ status: "success", data: { aqi, category } });
       } else {
-        setAirQuality({ status: "error", error: "Data not available." });
+        setAirQuality({ status: "error", error: "Air quality not available." });
       }
     } catch {
-      setAirQuality({ status: "error", error: "Could not fetch data." });
+      setAirQuality({ status: "error", error: "Could not fetch air quality." });
     }
   };
 
@@ -174,51 +190,96 @@ function Weather() {
       setForecast(dailyForecast);
     } catch (e) {
       console.error("Forecast fetch error:", e);
+      setForecast([]);
     }
   };
 
-  // ---------- Weather (S2: no backend writes on search) ----------
-  const getWeather = async (cityName = city) => {
-    let searchCity = cityName.trim();
-    let searchState = state.trim().toUpperCase();
+  // ---------- Weather search with Geocoding fallback ----------
+  const fetchWeatherByQuery = async (q) => {
+    return axios.get(
+      `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(
+        q
+      )}&appid=${openWeatherApiKey}&units=metric`
+    );
+  };
 
-    if (!searchCity || isLoading) return;
-    setIsLoading(true);
+  const fetchWeatherByCoords = async (lat, lon) => {
+    return axios.get(
+      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${openWeatherApiKey}&units=metric`
+    );
+  };
 
-    let query = searchCity;
-    if (searchState) {
-      query = `${searchCity},${searchState},US`;
+  const geocodeCity = async (name, stateCode) => {
+    // Prefer US results if no country provided
+    const q = stateCode ? `${name},${stateCode},US` : `${name},US`;
+    const res = await axios.get(
+      `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(
+        q
+      )}&limit=1&appid=${openWeatherApiKey}`
+    );
+    return Array.isArray(res.data) && res.data.length > 0 ? res.data[0] : null;
+  };
+
+  const validateCityInput = (value) => {
+    // very simple bogus check: at least 2 letters
+    return /[a-zA-Z]{2,}/.test(value);
+  };
+
+  const getWeather = async (cityNameArg) => {
+    const searchCity = (cityNameArg ?? city).trim();
+    const searchState = state.trim().toUpperCase();
+
+    if (!searchCity) {
+      setError("Please enter a city name.");
+      return;
+    }
+    if (!validateCityInput(searchCity)) {
+      setError("That doesn't look like a valid city. Try again.");
+      return;
     }
 
-    try {
-      const res = await axios.get(
-        `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(
-          query
-        )}&appid=${openWeatherApiKey}&units=metric`
-      );
-      const data = res.data;
+    if (isLoading) return;
+    setIsLoading(true);
+    setError("");
 
+    try {
+      // 1) Try q=city[,state], optimized for US if state provided.
+      const q = searchState ? `${searchCity},${searchState},US` : searchCity;
+      let res = null;
+      try {
+        res = await fetchWeatherByQuery(q);
+      } catch (e1) {
+        // 2) Fallback: geocode then fetch by coords
+        const g = await geocodeCity(searchCity, searchState || undefined);
+        if (!g) throw e1;
+        res = await fetchWeatherByCoords(g.lat, g.lon);
+      }
+
+      const data = res.data;
       setWeather(data);
       setActiveAlert(getAlertTypeFromWeather(data));
       updateBackground(data.weather[0].main);
       getForecast(data.name);
       if (data.coord) getAirQuality(data.coord.lat, data.coord.lon);
 
-      // Restore favorite state from records only (no writes)
+      // Restore favorite state for current user only
       setFavoriteFromRecords(data.name);
     } catch (e) {
-      console.error("Weather fetch error:", e);
+      console.error("Weather fetch error:", e?.response?.data || e.message);
+      const msg =
+        e?.response?.data?.message ||
+        "We couldn't find that city. Try including the state (e.g., Water Valley, MS).";
       setWeather(null);
       setForecast([]);
       setActiveAlert(null);
       setAirQuality({ status: "idle" });
-      alert("City not found!");
+      setError(msg);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ---------- Gradient gold star style (G3) ----------
+  // ---------- Favorite star style ----------
   const starStyleOn = {
     background:
       "linear-gradient(135deg, #fff7b1 0%, #ffd84d 30%, #ffb300 60%, #ffdb6e 100%)",
@@ -230,9 +291,13 @@ function Weather() {
   };
   const starStyleOff = { color: "inherit", fontSize: "1.05rem" };
 
-  // ---------- Favorite toggle (writes + refreshes list) ----------
+  // ---------- Favorite toggle ----------
   const toggleFavorite = async () => {
     if (!weather?.name) return;
+    if (!username?.trim()) {
+      setError("Please enter your name before saving favorites.");
+      return;
+    }
 
     const next = !isFavorite;
 
@@ -240,6 +305,8 @@ function Weather() {
     const c = Math.round(weather.main.temp);
     const f = Math.round((c * 9) / 5 + 32);
     const body = {
+      type: "favorite",
+      user: username.trim(),
       name: weather.name,
       temperature: `${c}°C / ${f}°F`,
       weather: weather.weather[0].description,
@@ -251,67 +318,66 @@ function Weather() {
       favorite: next,
     };
 
-    // Use existing id if present so backend updates rather than creating duplicates
     const existing = recordForCity(weather.name);
     const payload = { id: existing?.id, body };
 
-    // Optimistic update
+    // Optimistic UI
     setIsFavorite(next);
+    setRecords((prev) => {
+      if (existing) {
+        return prev.map((r) => (r.id === existing.id ? { ...r, body } : r));
+      }
+      // Add new
+      return [...prev, { id: undefined, body }];
+    });
 
     try {
-      const savedRecord = await saveFavoriteCity(payload);
-      if (!savedRecord) throw new Error("Save operation did not return a record.");
-      // Update the local records array with the new/updated record
-      setRecords(prevRecords => {
-        const index = prevRecords.findIndex(r => r.id === savedRecord.id);
-        if (index > -1) {
-          // Replace existing record
-          const newRecords = [...prevRecords];
-          newRecords[index] = savedRecord;
-          return newRecords;
-        } else {
-          // Add new record
-          return [...prevRecords, savedRecord];
-        }
-      });
+      const saved = await saveRecord(payload);
+      const savedId = saved?.id ?? existing?.id;
+      setRecords((prev) =>
+        prev.map((r) =>
+          (existing && r.id === existing.id) || (!existing && r.body === body)
+            ? { ...(saved || r), id: savedId, body: body }
+            : r
+        )
+      );
     } catch (e) {
       console.error("Favorite toggle failed:", e);
+      // Revert
       setIsFavorite(!next);
+      setRecords((prev) => (existing ? prev : prev.filter((r) => r.body !== body)));
+      setError("Could not save favorite. Please try again.");
     }
   };
 
+  // Toggle from list
   const toggleFavoriteFromList = async (cityName) => {
     const record = recordForCity(cityName);
     if (!record) return;
 
     const next = !record.body.favorite;
-
     const updatedBody = { ...record.body, favorite: next };
-    const payload = { id: record.id, body: updatedBody };
 
     // Optimistic update
-    setRecords(prevRecords =>
-      prevRecords.map(r => (r.id === record.id ? { ...r, body: updatedBody } : r))
-    );
+    setRecords((prev) => prev.map((r) => (r.id === record.id ? { ...r, body: updatedBody } : r)));
     if (weather && weather.name.toLowerCase() === cityName.toLowerCase()) {
       setIsFavorite(next);
     }
 
     try {
-      const savedRecord = await saveFavoriteCity(payload);
-      if (!savedRecord) throw new Error("Save operation did not return a record.");
-      // If the API call succeeds, the state is already updated.
-      // If it fails, we revert the change.
+      await saveRecord({ id: record.id, body: updatedBody });
     } catch (e) {
       console.error("Favorite toggle from list failed:", e);
-      // Revert optimistic update on failure
-      setRecords(prevRecords =>
-        prevRecords.map(r => (r.id === record.id ? record : r))
-      );
+      // Revert
+      setRecords((prev) => prev.map((r) => (r.id === record.id ? record : r)));
+      if (weather && weather.name.toLowerCase() === cityName.toLowerCase()) {
+        setIsFavorite(!next);
+      }
+      setError("Could not update favorite. Please try again.");
     }
   };
 
-  // ---------- Delete from list (only available for favorited cities) ----------
+  // Delete from list
   const deleteCityRecord = async (cityName) => {
     const rec = recordForCity(cityName);
     if (!rec?.id) return;
@@ -319,17 +385,15 @@ function Weather() {
       if (weather && weather.name.toLowerCase() === cityName.toLowerCase()) {
         setIsFavorite(false);
       }
-      // Make API call
       await deleteRecordById(rec.id);
-      // After successful deletion, update the state to remove the record
-      setRecords(prevRecords => prevRecords.filter((r) => r.id !== rec.id));
+      setRecords((prev) => prev.filter((r) => r.id !== rec.id));
     } catch (e) {
       console.error("Error deleting record:", e);
-      alert("Failed to delete city. Please try again.");
+      setError("Failed to delete. Please try again.");
     }
   };
 
-  // ---------- Local Time ----------
+  // Local Time
   const getLocalTime = () => {
     if (!weather?.timezone) return null;
     const now = new Date();
@@ -342,39 +406,52 @@ function Weather() {
     });
   };
 
-  if (!recordsLoaded)
-    return <div className="loading-placeholder">Loading favorites...</div>;
+  if (!recordsLoaded) return <div className="loading-placeholder">Loading favorites...</div>;
 
   return (
     <>
       <div className="background-overlay"></div>
       <div className="weather-container glass">
         <h2>Check the Weather</h2>
+
+        {/* Simple per-user identity so favorites are separated cleanly */}
+        <div className="input-row" style={{ marginBottom: 8 }}>
+          <input
+            type="text"
+            placeholder="Your name (keeps your favorites separate)"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            style={{ width: "100%" }}
+          />
+        </div>
+
         <div className="input-row">
           <input
             type="text"
-            placeholder="Enter city name"
+            placeholder='Enter city name (e.g., "Water Valley")'
             value={city}
             onChange={(e) => setCity(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && getWeather()}
           />
           <input
             type="text"
-            placeholder="State (e.g., CA)"
+            placeholder="State (e.g., MS)"
             value={state}
             onChange={(e) => setState(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && getWeather()}
-            style={{ width: '120px', marginLeft: '8px' }}
+            style={{ width: "120px", marginLeft: "8px" }}
           />
-        <button onClick={() => getWeather()} disabled={isLoading}>{isLoading ? "Searching..." : "Search"}</button>
+          <button onClick={() => getWeather()} disabled={isLoading}>
+            {isLoading ? "Searching..." : "Search"}
+          </button>
         </div>
+
+        {error && <div className="error-banner">{error}</div>}
 
         {weather && (
           <div className="weather-info fade-in">
             <h3 className="readable-text">{weather.name}</h3>
-            <p className="readable-text">
-              🕐 Local Time: {getLocalTime()}
-            </p>
+            <p className="readable-text">🕐 Local Time: {getLocalTime()}</p>
             <p className="readable-text">
               🌡️ {weather.main.temp.toFixed(1)}°C (
               {((weather.main.temp * 9) / 5 + 32).toFixed(1)}°F)
@@ -384,12 +461,10 @@ function Weather() {
 
             {airQuality.status === "success" && (
               <p className="readable-text">
-                🌬️ AQI: <strong>{airQuality.data.aqi}</strong> (
-                {airQuality.data.category})
+                🌬️ AQI: <strong>{airQuality.data.aqi}</strong> ({airQuality.data.category})
               </p>
             )}
 
-            {/* Favorite button (Option A text) */}
             <button
               onClick={toggleFavorite}
               className="favorite-btn"
@@ -418,12 +493,8 @@ function Weather() {
                       alt={day.main}
                     />
                     <p>{day.main}</p>
-                    <p>
-                      H: {Math.round(day.highC)}°C / {Math.round(day.highF)}°F
-                    </p>
-                    <p>
-                      L: {Math.round(day.lowC)}°C / {Math.round(day.lowF)}°F
-                    </p>
+                    <p>H: {Math.round(day.highC)}°C / {Math.round(day.highF)}°F</p>
+                    <p>L: {Math.round(day.lowC)}°C / {Math.round(day.lowF)}°F</p>
                   </div>
                 ))}
               </div>
@@ -431,8 +502,8 @@ function Weather() {
           </div>
         )}
 
-        {/* Your Cities (L2: show only favorited) */}
-        {favoriteRecords.length > 0 && (
+        {/* Your Cities (only current user's favorited cities) */}
+        {username?.trim() && favoriteRecords.length > 0 && (
           <div className="favorites-section fade-in" style={{ marginTop: 16 }}>
             <h3
               onClick={() => setShowFavorites(!showFavorites)}
@@ -443,7 +514,7 @@ function Weather() {
             {showFavorites && (
               <div className="favorites-buttons">
                 {favoriteRecords.map((r) => (
-                  <div key={r.id ?? r.body?.name} className="favorite-item">
+                  <div key={r.id ?? `${r.body?.user}:${r.body?.name}`} className="favorite-item">
                     <span
                       className="favorite-item-star"
                       style={r.body?.favorite ? starStyleOn : starStyleOff}
@@ -454,14 +525,21 @@ function Weather() {
                     >
                       {r.body?.favorite ? "★" : "☆"}
                     </span>
-                    <span className="favorite-item-name" onClick={() => {
-                      getWeather(r.body?.name);
-                    }}>
+                    <span
+                      className="favorite-item-name"
+                      onClick={() => {
+                        setCity(r.body?.name || "");
+                        getWeather(r.body?.name);
+                      }}
+                    >
                       {r.body?.name}
                     </span>
                     <button
                       className="remove-btn"
-                      onClick={(e) => { e.stopPropagation(); deleteCityRecord(r.body?.name); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteCityRecord(r.body?.name);
+                      }}
                       title="Remove from favorites"
                     >
                       ✕
@@ -473,9 +551,7 @@ function Weather() {
           </div>
         )}
 
-        {weather && (
-          <IssueReport />
-        )}
+        {weather && <IssueReport user={username} city={weather?.name} />}
       </div>
     </>
   );

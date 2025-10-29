@@ -1,5 +1,6 @@
+// src/components/WeatherAlert.js
 import React from "react";
-import "./WeatherAlert.css"; // ✅ new animation styles
+import "./WeatherAlert.css";
 import "../App.css";
 
 function WeatherAlert({ type }) {
@@ -15,12 +16,8 @@ function WeatherAlert({ type }) {
     "High Heat/UV Advisory": "#ff9800",
   };
 
-  // The `type` prop is now the alert object itself.
   const alertDetails = type;
-  if (!alertDetails) return null;
-
   const backgroundColor = alertColors[alertDetails.title] || "#444";
-  // Assign a default icon if one isn't provided.
   const icon = alertDetails.icon || "⚠️";
 
   return (
