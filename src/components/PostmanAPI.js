@@ -43,3 +43,16 @@ export const saveRecord = async ({ id, body }) => {
 export const deleteRecordById = async (id) => {
   await axios.delete(`${BASE_URL}/post/data/${id}`);
 };
+
+export async function getWeatherByCoords(lat, lon) {
+  try {
+    const res = await fetch(
+      `${BASE_URL}/weather/${TEAM}?lat=${lat}&lon=${lon}`
+    );
+    if (!res.ok) throw new Error("Unable to fetch weather for your location");
+    return res.json();
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
+}

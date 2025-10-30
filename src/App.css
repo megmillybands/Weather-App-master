@@ -93,12 +93,11 @@ h3 {
 .input-row {
   display: flex;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 1rem;
   margin-bottom: 1.5rem;
 }
 
 .input-row input {
-  width: 20rem;
   padding: 0.8rem;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.25);
@@ -447,4 +446,40 @@ h3 {
 
 .favorite-btn:hover {
   transform: scale(1.2);
+}
+
+/* Autocomplete Suggestions List */
+.suggestions-list {
+  position: absolute;
+  top: calc(100% - 1px); /* Overlap border */
+  left: 0;
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  z-index: 100;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.suggestions-list li {
+  padding: 10px 15px;
+  cursor: pointer;
+  color: #222;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+.suggestions-list li:last-child {
+  border-bottom: none;
+}
+
+.suggestions-list li:hover {
+  background-color: #f0f0f0;
 }

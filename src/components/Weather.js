@@ -1,13 +1,16 @@
-// src/components/Weather.js
-import React, { useState, useEffect } from "react";
+
+import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import WeatherAlert from "./WeatherAlert";
 import IssueReport from "./IssueReport";
+import UseMyLocation from "./Usemylocation";
+import CitySearch from "./CitySearch";
+
 import "../App.css";
 
 import {
   getAllRecords,
-  saveRecord,
+  saveRecord, // This was saveFavoriteCity in a previous version
   deleteRecordById,
 } from "./PostmanAPI";
 
@@ -20,28 +23,68 @@ import {
  * 5) IssueReport writes to your class API.
  */
 
-function Weather() {
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
-  const [username, setUsername] = useState(""); // per-user identity
+
+export default function Weather({
+  city,
+  setCity,
+  state,
+  setState,
+  username: propUsername,
+}) {
+  const [username, setUsername] = useState(propUsername || "");
+  const [timezone, setTimezone] = useState(
+    Intl.DateTimeFormat().resolvedOptions().timeZone
+  );
 
   const [weather, setWeather] = useState(null);
   const [forecast, setForecast] = useState([]);
   const [records, setRecords] = useState([]);
   const [recordsLoaded, setRecordsLoaded] = useState(false);
+  const [localTime, setLocalTime] = useState(null);
+
 
   const [isLoading, setIsLoading] = useState(false);
   const [activeAlert, setActiveAlert] = useState(null);
   const [airQuality, setAirQuality] = useState({ status: "idle" });
   const [isFavorite, setIsFavorite] = useState(false);
   const [showFavorites, setShowFavorites] = useState(true);
+  const [nearestUsed, setNearestUsed] = useState(false); // add this with other useState calls
   const [error, setError] = useState("");
+  
+const handleWeatherFetched = (weatherData, location) => {
+  // This function is called by UseMyLocation, which passes (null, location)
+  // It can also be called by other components with weatherData.
+  const cityToUse = location?.city || weatherData?.name;
+  if (cityToUse) {
+    setCity(cityToUse);
+    const cityState = location?.state || "";
+    setState(cityState); // Set state from location data if available
+    if (location?.timezone) setTimezone(location.timezone);
+    setNearestUsed(!!location?.nearestUsed);
+    getWeather(cityToUse); // Trigger weather fetch with the determined city
+  } else if (weatherData) {
+    setWeather(weatherData); // Directly set weather if data is provided
+  }
+};
+
+const handleCitySelect = (selectedCity) => {
+  const cityToSearch = selectedCity || city;
+  if (!cityToSearch) return;
+
+  // Use the full string for geocoding to be unambiguous
+
+  // Update the city state for the input field
+  setCity(cityToSearch);
+
+  // Trigger the weather search
+  getWeather(cityToSearch);
+};
 
   const openWeatherApiKey = "e54b1a91b15cfa9a227758fc1e6b5c27";
   const WAQI_API_TOKEN = "62cf31c65a6a5aa1beb30b397e2b00378f1586c9";
 
   // ---------- Helpers ----------
-  const recordForCity = (name) => {
+  const recordForCity = useCallback((name) => {
     const key = String(name || "").toLowerCase();
     return (
       records.find(
@@ -50,7 +93,7 @@ function Weather() {
           String(r?.body?.user || "").toLowerCase() === String(username).toLowerCase()
       ) || null
     );
-  };
+  }, [records, username]);
 
   const favoriteRecords = records.filter(
     (r) =>
@@ -58,10 +101,10 @@ function Weather() {
       String(r?.body?.user || "").toLowerCase() === String(username).toLowerCase()
   );
 
-  const setFavoriteFromRecords = (name) => {
+  const setFavoriteFromRecords = useCallback((name) => {
     const rec = recordForCity(name);
     setIsFavorite(rec?.body?.favorite === true);
-  };
+  }, [recordForCity]);
 
   // Load all records once (then we filter by username in-memory)
   useEffect(() => {
@@ -195,29 +238,19 @@ function Weather() {
   };
 
   // ---------- Weather search with Geocoding fallback ----------
-  const fetchWeatherByQuery = async (q) => {
-    return axios.get(
-      `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(
-        q
-      )}&appid=${openWeatherApiKey}&units=metric`
-    );
-  };
-
   const fetchWeatherByCoords = async (lat, lon) => {
     return axios.get(
       `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${openWeatherApiKey}&units=metric`
     );
   };
 
-  const geocodeCity = async (name, stateCode) => {
-    // Prefer US results if no country provided
-    const q = stateCode ? `${name},${stateCode},US` : `${name},US`;
+  const geocodeCity = async (name) => {
     const res = await axios.get(
-      `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(
-        q
-      )}&limit=1&appid=${openWeatherApiKey}`
+      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(
+        name
+      )}&key=${"0365e1e9244f4f1d85b5f5e2e4a3b8bd"}&limit=1&language=en`
     );
-    return Array.isArray(res.data) && res.data.length > 0 ? res.data[0] : null;
+    return res.data?.results?.length > 0 ? res.data.results[0] : null;
   };
 
   const validateCityInput = (value) => {
@@ -225,12 +258,14 @@ function Weather() {
     return /[a-zA-Z]{2,}/.test(value);
   };
 
-  const getWeather = async (cityNameArg) => {
+  const getWeather = useCallback(async (cityNameArg) => {
     const searchCity = (cityNameArg ?? city).trim();
-    const searchState = state.trim().toUpperCase();
 
+    // Update UI state to reflect the current search
+    setCity(searchCity);
+    // A search term is required
     if (!searchCity) {
-      setError("Please enter a city name.");
+      setError("Please enter a city.");
       return;
     }
     if (!validateCityInput(searchCity)) {
@@ -243,19 +278,18 @@ function Weather() {
     setError("");
 
     try {
-      // 1) Try q=city[,state], optimized for US if state provided.
-      const q = searchState ? `${searchCity},${searchState},US` : searchCity;
-      let res = null;
-      try {
-        res = await fetchWeatherByQuery(q);
-      } catch (e1) {
-        // 2) Fallback: geocode then fetch by coords
-        const g = await geocodeCity(searchCity, searchState || undefined);
-        if (!g) throw e1;
-        res = await fetchWeatherByCoords(g.lat, g.lon);
+      // Geocode the city name to get coordinates and timezone
+      const geoResult = await geocodeCity(searchCity);
+      if (!geoResult) {
+        throw new Error("City not found.");
       }
 
+      const { lat, lng } = geoResult.geometry;
+      const res = await fetchWeatherByCoords(lat, lng);
+
       const data = res.data;
+      // Use the accurate IANA timezone from the geocoding result
+      setTimezone(geoResult.annotations.timezone.name);
       setWeather(data);
       setActiveAlert(getAlertTypeFromWeather(data));
       updateBackground(data.weather[0].main);
@@ -277,7 +311,7 @@ function Weather() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [city, isLoading, setFavoriteFromRecords, setCity]);
 
   // ---------- Favorite star style ----------
   const starStyleOn = {
@@ -394,31 +428,43 @@ function Weather() {
   };
 
   // Local Time
-  const getLocalTime = () => {
-    if (!weather?.timezone) return null;
+  const getLocalTime = useCallback(() => {
+    if (!timezone) return null;
     const now = new Date();
-    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-    const localTime = new Date(utc + weather.timezone * 1000);
-    return localTime.toLocaleTimeString("en-US", {
+    return now.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
+      timeZone: timezone,
     });
-  };
+  }, [timezone]);
 
-  if (!recordsLoaded) return <div className="loading-placeholder">Loading favorites...</div>;
+  // Update local time every minute
+  useEffect(() => {
+    // Set the time immediately
+    setLocalTime(getLocalTime());
+
+    const interval = setInterval(() => {
+      setLocalTime(getLocalTime());
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [getLocalTime]);
+
+  if (!recordsLoaded) {
+    return <div className="loading-placeholder">Loading...</div>;
+  }
 
   return (
     <>
       <div className="background-overlay"></div>
       <div className="weather-container glass">
         <h2>Check the Weather</h2>
-
         {/* Simple per-user identity so favorites are separated cleanly */}
         <div className="input-row" style={{ marginBottom: 8 }}>
           <input
             type="text"
-            placeholder="Your name (keeps your favorites separate)"
+            placeholder="Your name (for favorites)"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             style={{ width: "100%" }}
@@ -426,32 +472,32 @@ function Weather() {
         </div>
 
         <div className="input-row">
-          <input
-            type="text"
-            placeholder='Enter city name (e.g., "Water Valley")'
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && getWeather()}
-          />
-          <input
-            type="text"
-            placeholder="State (e.g., MS)"
-            value={state}
-            onChange={(e) => setState(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && getWeather()}
-            style={{ width: "120px", marginLeft: "8px" }}
-          />
-          <button onClick={() => getWeather()} disabled={isLoading}>
+          <CitySearch onCitySelect={handleCitySelect} city={city} setCity={setCity} />
+          <button onClick={() => handleCitySelect()} disabled={isLoading} style={{ marginLeft: '8px' }}>
             {isLoading ? "Searching..." : "Search"}
           </button>
         </div>
+
+        <div className="input-row" style={{ justifyContent: "center", marginTop: 8 }}>
+          <UseMyLocation
+            onWeatherFetched={handleWeatherFetched}
+            setLoading={setIsLoading}
+            setErrorMessage={setError}
+          />
+        </div>
+
+        {nearestUsed && (
+          <p style={{ color: "#555", marginTop: "8px", fontStyle: "italic" }}>
+            📍 Showing nearest city based on your location
+          </p>
+        )}
 
         {error && <div className="error-banner">{error}</div>}
 
         {weather && (
           <div className="weather-info fade-in">
             <h3 className="readable-text">{weather.name}</h3>
-            <p className="readable-text">🕐 Local Time: {getLocalTime()}</p>
+            <p className="readable-text">🕐 Local Time: {localTime}</p>
             <p className="readable-text">
               🌡️ {weather.main.temp.toFixed(1)}°C (
               {((weather.main.temp * 9) / 5 + 32).toFixed(1)}°F)
@@ -556,5 +602,3 @@ function Weather() {
     </>
   );
 }
-
-export default Weather;
