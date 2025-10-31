@@ -42,6 +42,9 @@ export default function Weather({
   const [recordsLoaded, setRecordsLoaded] = useState(false);
   const [localTime, setLocalTime] = useState(null);
 
+  // Icon size used across imgs and inline SVGs for consistent sizing
+  const ICON_SIZE = 48;
+
 
   const [isLoading, setIsLoading] = useState(false);
   const [activeAlert, setActiveAlert] = useState(null);
@@ -499,10 +502,39 @@ const handleCitySelect = (selectedCity) => {
             <h3 className="readable-text">{weather.name}</h3>
             <p className="readable-text">🕐 Local Time: {localTime}</p>
             <p className="readable-text">
-              🌡️ {weather.main.temp.toFixed(1)}°C (
-              {((weather.main.temp * 9) / 5 + 32).toFixed(1)}°F)
+              🌡️ {Math.round(weather.main.temp)}°C ({Math.round((weather.main.temp * 9) / 5 + 32)}°F)
             </p>
-            <p className="readable-text">☁️ {weather.weather[0].description}</p>
+            <p className="readable-text" style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              {String(weather.weather[0].main || "").toLowerCase() === "clear" ? (
+                <svg
+                  width={ICON_SIZE}
+                  height={ICON_SIZE}
+                  viewBox="0 0 64 64"
+                  xmlns="http://www.w3.org/2000/svg"
+                  role="img"
+                  aria-label={weather.weather[0].description || "Clear"}
+                >
+                  <circle cx="32" cy="32" r="10" fill="#FFD54F" />
+                  <g stroke="#FFD066" strokeWidth="2" strokeLinecap="round" transform="translate(32,32)">
+                    <line x1="0" y1="-16" x2="0" y2="-10" />
+                    <line x1="0" y1="10" x2="0" y2="16" />
+                    <line x1="-16" y1="0" x2="-10" y2="0" />
+                    <line x1="10" y1="0" x2="16" y2="0" />
+                    <line x1="-10" y1="-10" x2="-6" y2="-6" />
+                    <line x1="6" y1="6" x2="10" y2="10" />
+                    <line x1="-10" y1="10" x2="-6" y2="6" />
+                    <line x1="6" y1="-6" x2="10" y2="-10" />
+                  </g>
+                </svg>
+              ) : (
+                <img
+                  src={`https://openweathermap.org/img/wn/${weather.weather[0].icon}@2x.png`}
+                  alt={weather.weather[0].description}
+                  style={{ width: ICON_SIZE, height: ICON_SIZE }}
+                />
+              )}
+              <span style={{ marginTop: 6 }}>{weather.weather[0].description}</span>
+            </p>
             <p className="readable-text">💨 Wind: {weather.wind.speed} m/s</p>
 
             {airQuality.status === "success" && (
@@ -534,10 +566,35 @@ const handleCitySelect = (selectedCity) => {
                 {forecast.map((day, i) => (
                   <div key={i} className="forecast-day">
                     <strong>{day.date}</strong>
-                    <img
-                      src={`https://openweathermap.org/img/wn/${day.icon}@2x.png`}
-                      alt={day.main}
-                    />
+                    {String(day.main || "").toLowerCase() === "clear" ? (
+                      // Inline sun SVG without a background box — only sun and rays
+                      <svg
+                        width={ICON_SIZE}
+                        height={ICON_SIZE}
+                        viewBox="0 0 64 64"
+                        xmlns="http://www.w3.org/2000/svg"
+                        role="img"
+                        aria-label={day.main || "Clear"}
+                      >
+                        <circle cx="32" cy="32" r="10" fill="#FFD54F" />
+                        <g stroke="#FFD066" strokeWidth="2" strokeLinecap="round" transform="translate(32,32)">
+                          <line x1="0" y1="-16" x2="0" y2="-10" />
+                          <line x1="0" y1="10" x2="0" y2="16" />
+                          <line x1="-16" y1="0" x2="-10" y2="0" />
+                          <line x1="10" y1="0" x2="16" y2="0" />
+                          <line x1="-10" y1="-10" x2="-6" y2="-6" />
+                          <line x1="6" y1="6" x2="10" y2="10" />
+                          <line x1="-10" y1="10" x2="-6" y2="6" />
+                          <line x1="6" y1="-6" x2="10" y2="-10" />
+                        </g>
+                      </svg>
+                    ) : (
+                      <img
+                        src={`https://openweathermap.org/img/wn/${day.icon}@2x.png`}
+                        alt={day.main}
+                        style={{ width: ICON_SIZE, height: ICON_SIZE }}
+                      />
+                    )}
                     <p>{day.main}</p>
                     <p>H: {Math.round(day.highC)}°C / {Math.round(day.highF)}°F</p>
                     <p>L: {Math.round(day.lowC)}°C / {Math.round(day.lowF)}°F</p>
