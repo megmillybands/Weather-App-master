@@ -51,39 +51,19 @@ export default function CitySearch({ onCitySelect, city, setCity }) {
   }, [city, showSuggestions]);
 
   return (
-    <div style={{ position: "relative", flexGrow: 1, marginBottom: "10px" }}>
+    <div>
       <input
         type="text"
         value={city}
-        placeholder="Search for a city anywhere in the world"
+        placeholder="Search for a city"
         onChange={(e) => {
           setCity(e.target.value);
           setShowSuggestions(true); // Show suggestions when user is typing
         }}
-        style={{
-          width: "100%",
-          padding: "10px",
-          borderRadius: "8px",
-          border: "1px solid #ccc",
-        }}
       />
 
       {suggestions.length > 0 && showSuggestions && (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            background: "#fff",
-            border: "1px solid #ccc",
-            borderRadius: "8px",
-            position: "absolute",
-            width: "100%",
-            zIndex: 10,
-            maxHeight: "180px",
-            overflowY: "auto",
-          }}
-        >
+        <ul>
           {suggestions.map((place, index) => (
             <li
               key={index}
@@ -91,13 +71,6 @@ export default function CitySearch({ onCitySelect, city, setCity }) {
                 setCity(place);
                 setShowSuggestions(false); // Hide suggestions on selection
                 onCitySelect(place);
-              }}
-              style={{
-                padding: "8px",
-                cursor: "pointer",
-                borderBottom: "1px solid #eee",
-                color: "#333",
-                transition: "background 0.2s",
               }}
               onMouseEnter={(e) => (e.target.style.background = "#f5f5f5")}
               onMouseLeave={(e) => (e.target.style.background = "#fff")}

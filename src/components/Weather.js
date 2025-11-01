@@ -310,24 +310,23 @@ export default function Weather({ city, setCity, state, setState, username: prop
       <div className="background-overlay"></div>
       <div className="weather-container glass">
         <h2>Check the Weather</h2>
-        <div className="input-row" style={{ marginBottom: 8 }}>
+        <div className="input-row">
           <input
             type="text"
-            placeholder="Your name (for favorites)"
+            placeholder="Enter your username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            style={{ width: "100%" }}
           />
         </div>
 
         <div className="input-row">
           <CitySearch onCitySelect={getWeather} city={city} setCity={setCity} />
-          <button onClick={() => getWeather(city)} disabled={isLoading} style={{ marginLeft: "8px" }}>
+          <button onClick={() => getWeather(city)} disabled={isLoading}>
             {isLoading ? "Searching..." : "Search"}
           </button>
         </div>
 
-        <div className="input-row" style={{ justifyContent: "center", marginTop: 8 }}>
+        <div className="input-row">
           <UseMyLocation
             onWeatherFetched={getWeather}
             setLoading={setIsLoading}

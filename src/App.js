@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
 import Weather from "./components/Weather";
-import Favorites from "./components/Favorites";
+// import Favorites from "./components/Favorites";
 import AuthBox from "./components/AuthBox";
 
 function App() {
@@ -30,6 +30,7 @@ function App() {
     return (
       <div className="App">
         <div className="background-overlay"></div>
+        <h1>Weather App</h1>
         <AuthBox setAuthUser={setAuthUser} />
       </div>
     );
@@ -52,7 +53,7 @@ function App() {
         setState={setState}
         username={authUser.username}
       />
-      <Favorites username={authUser.username} setCity={setCity} />
+      {/* <Favorites username={authUser.username} setCity={setCity} /> */}
     </div>
   );
 }

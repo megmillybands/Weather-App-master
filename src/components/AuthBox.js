@@ -32,11 +32,11 @@ export default function AuthBox({ setAuthUser }) {
     } else {
       const existingUser = storedUsers[username];
       if (!existingUser) {
-        setError("User not found. Please sign up.");
+        setError("User not found.");
         return;
       }
       if (existingUser.password !== hashPassword(password)) {
-        setError("Incorrect password. Try again.");
+        setError("Incorrect password.");
         return;
       }
       setAuthUser({ username });
@@ -46,7 +46,7 @@ export default function AuthBox({ setAuthUser }) {
   return (
     <div className="auth-container">
       <div className="auth-box glass">
-        <h2>{isSignup ? "Create an Account" : "Welcome Back"}</h2>
+        <h2>Check the Weather</h2>
         <form onSubmit={handleSubmit}>
           <input
             type="text"
