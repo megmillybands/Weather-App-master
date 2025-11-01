@@ -1,115 +1,66 @@
-
+// src/components/Weather.js
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import WeatherAlert from "./WeatherAlert";
 import IssueReport from "./IssueReport";
 import UseMyLocation from "./Usemylocation";
 import CitySearch from "./CitySearch";
-
 import "../App.css";
+import { getAllRecords, saveRecord, deleteRecordById } from "./PostmanAPI";
 
-import {
-  getAllRecords,
-  saveRecord, // This was saveFavoriteCity in a previous version
-  deleteRecordById,
-} from "./PostmanAPI";
-
-/**
- * Key upgrades:
- * 1) Robust search: tries q=city[,state], then falls back to Geocoding API to support inputs like "Water Valley".
- * 2) Per-user favorites: records include { user }, filtered to current user.
- * 3) Optimistic favorite toggle that's resilient and doesn't flip back.
- * 4) Clean error states (no alert boxes) + bogus-input handling.
- * 5) IssueReport writes to your class API.
- */
-
-
-export default function Weather({
-  city,
-  setCity,
-  state,
-  setState,
-  username: propUsername,
-}) {
+export default function Weather({ city, setCity, state, setState, username: propUsername }) {
   const [username, setUsername] = useState(propUsername || "");
-  const [timezone, setTimezone] = useState(
-    Intl.DateTimeFormat().resolvedOptions().timeZone
-  );
-
+  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [weather, setWeather] = useState(null);
   const [forecast, setForecast] = useState([]);
   const [records, setRecords] = useState([]);
   const [recordsLoaded, setRecordsLoaded] = useState(false);
   const [localTime, setLocalTime] = useState(null);
-
-  // Icon size used across imgs and inline SVGs for consistent sizing
-  const ICON_SIZE = 48;
-
-
   const [isLoading, setIsLoading] = useState(false);
   const [activeAlert, setActiveAlert] = useState(null);
   const [airQuality, setAirQuality] = useState({ status: "idle" });
   const [isFavorite, setIsFavorite] = useState(false);
   const [showFavorites, setShowFavorites] = useState(true);
-  const [nearestUsed, setNearestUsed] = useState(false); // add this with other useState calls
+  const [nearestUsed, setNearestUsed] = useState(false);
   const [error, setError] = useState("");
-  
-const handleWeatherFetched = (weatherData, location) => {
-  // This function is called by UseMyLocation, which passes (null, location)
-  // It can also be called by other components with weatherData.
-  const cityToUse = location?.city || weatherData?.name;
-  if (cityToUse) {
-    setCity(cityToUse);
-    const cityState = location?.state || "";
-    setState(cityState); // Set state from location data if available
-    if (location?.timezone) setTimezone(location.timezone);
-    setNearestUsed(!!location?.nearestUsed);
-    getWeather(cityToUse); // Trigger weather fetch with the determined city
-  } else if (weatherData) {
-    setWeather(weatherData); // Directly set weather if data is provided
-  }
-};
-
-const handleCitySelect = (selectedCity) => {
-  const cityToSearch = selectedCity || city;
-  if (!cityToSearch) return;
-
-  // Use the full string for geocoding to be unambiguous
-
-  // Update the city state for the input field
-  setCity(cityToSearch);
-
-  // Trigger the weather search
-  getWeather(cityToSearch);
-};
 
   const openWeatherApiKey = "e54b1a91b15cfa9a227758fc1e6b5c27";
   const WAQI_API_TOKEN = "62cf31c65a6a5aa1beb30b397e2b00378f1586c9";
 
-  // ---------- Helpers ----------
-  const recordForCity = useCallback((name) => {
-    const key = String(name || "").toLowerCase();
-    return (
-      records.find(
-        (r) =>
-          String(r?.body?.name || "").toLowerCase() === key &&
-          String(r?.body?.user || "").toLowerCase() === String(username).toLowerCase()
-      ) || null
-    );
-  }, [records, username]);
-
-  const favoriteRecords = records.filter(
-    (r) =>
-      r?.body?.favorite === true &&
-      String(r?.body?.user || "").toLowerCase() === String(username).toLowerCase()
+  // ✅ Safely get a record for a given city
+  const recordForCity = useCallback(
+    (name) => {
+      const key = String(name || "").toLowerCase();
+      return (
+        records.find(
+          (r) =>
+            String(r?.body?.name || "").toLowerCase() === key &&
+            String(r?.body?.user || "").toLowerCase() === String(username).toLowerCase()
+        ) || null
+      );
+    },
+    [records, username]
   );
 
-  const setFavoriteFromRecords = useCallback((name) => {
-    const rec = recordForCity(name);
-    setIsFavorite(rec?.body?.favorite === true);
-  }, [recordForCity]);
+  // ✅ Filter current user's favorite records safely
+  const favoriteRecords = Array.isArray(records)
+    ? records.filter(
+        (r) =>
+          r?.body?.favorite === true &&
+          String(r?.body?.user || "").toLowerCase() === String(username).toLowerCase()
+      )
+    : [];
 
-  // Load all records once (then we filter by username in-memory)
+  // ✅ Set the favorite star state from records
+  const setFavoriteFromRecords = useCallback(
+    (name) => {
+      const rec = recordForCity(name);
+      setIsFavorite(rec?.body?.favorite === true);
+    },
+    [recordForCity]
+  );
+
+  // ✅ Load all records once
   useEffect(() => {
     const load = async () => {
       try {
@@ -143,8 +94,7 @@ const handleCitySelect = (selectedCity) => {
     overlay.style.transition = "opacity 1.5s ease-in-out, background 1.5s ease-in-out";
     overlay.style.opacity = 0;
     setTimeout(() => {
-      overlay.style.background =
-        gradients[String(type).toLowerCase()] || gradients.default;
+      overlay.style.background = gradients[String(type).toLowerCase()] || gradients.default;
       overlay.style.backgroundSize = "400% 400%";
       overlay.style.animation = "gradientMove 15s ease infinite";
       overlay.style.opacity = 1;
@@ -156,29 +106,21 @@ const handleCitySelect = (selectedCity) => {
     if (!data?.weather?.length) return null;
     const desc = data.weather[0].description.toLowerCase();
     const temp = data.main.temp;
-    if (desc.includes("tornado"))
-      return { title: "Tornado Warning", description: "Take shelter immediately!" };
-    if (desc.includes("thunder"))
-      return { title: "Severe Thunderstorm", description: "Thunderstorms expected." };
-    if (desc.includes("rain"))
-      return { title: "Heavy Rain Alert", description: "Drive carefully." };
-    if (desc.includes("snow"))
-      return { title: "Winter Snow Advisory", description: "Dress warmly." };
-    if (desc.includes("fog") || desc.includes("mist"))
-      return { title: "Dense Fog Advisory", description: "Low visibility ahead." };
-    if (temp > 32)
-      return { title: "High Heat/UV Advisory", description: "Stay hydrated." };
+    if (desc.includes("tornado")) return { title: "Tornado Warning", description: "Take shelter immediately!" };
+    if (desc.includes("thunder")) return { title: "Severe Thunderstorm", description: "Thunderstorms expected." };
+    if (desc.includes("rain")) return { title: "Heavy Rain Alert", description: "Drive carefully." };
+    if (desc.includes("snow")) return { title: "Winter Snow Advisory", description: "Dress warmly." };
+    if (desc.includes("fog") || desc.includes("mist")) return { title: "Dense Fog Advisory", description: "Low visibility ahead." };
+    if (temp > 32) return { title: "High Heat/UV Advisory", description: "Stay hydrated." };
     return null;
   };
 
-  // ---------- AQI ----------
+  // ---------- Air Quality ----------
   const getAirQuality = async (lat, lon) => {
     if (!WAQI_API_TOKEN) return;
     setAirQuality({ status: "loading" });
     try {
-      const { data } = await axios.get(
-        `https://api.waqi.info/feed/geo:${lat};${lon}/?token=${WAQI_API_TOKEN}`
-      );
+      const { data } = await axios.get(`https://api.waqi.info/feed/geo:${lat};${lon}/?token=${WAQI_API_TOKEN}`);
       if (data.status === "ok" && data.data.aqi != null) {
         const aqi = data.data.aqi;
         let category;
@@ -201,20 +143,14 @@ const handleCitySelect = (selectedCity) => {
   const getForecast = async (cityName) => {
     try {
       const res = await axios.get(
-        `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(
-          cityName
-        )}&appid=${openWeatherApiKey}&units=metric`
+        `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(cityName)}&appid=${openWeatherApiKey}&units=metric`
       );
-
       const grouped = {};
       res.data.list.forEach((entry) => {
-        const date = new Date(entry.dt_txt).toLocaleDateString("en-US", {
-          weekday: "short",
-        });
+        const date = new Date(entry.dt_txt).toLocaleDateString("en-US", { weekday: "short" });
         if (!grouped[date]) grouped[date] = [];
         grouped[date].push(entry);
       });
-
       const dailyForecast = Object.values(grouped)
         .slice(0, 5)
         .map((entries) => {
@@ -232,101 +168,60 @@ const handleCitySelect = (selectedCity) => {
             main: entries[0].weather[0].main,
           };
         });
-
       setForecast(dailyForecast);
-    } catch (e) {
-      console.error("Forecast fetch error:", e);
+    } catch {
       setForecast([]);
     }
   };
 
-  // ---------- Weather search with Geocoding fallback ----------
-  const fetchWeatherByCoords = async (lat, lon) => {
-    return axios.get(
-      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${openWeatherApiKey}&units=metric`
-    );
-  };
-
+  // ---------- Weather Fetch ----------
   const geocodeCity = async (name) => {
     const res = await axios.get(
-      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(
-        name
-      )}&key=${"0365e1e9244f4f1d85b5f5e2e4a3b8bd"}&limit=1&language=en`
+      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(name)}&key=0365e1e9244f4f1d85b5f5e2e4a3b8bd&limit=1&language=en`
     );
     return res.data?.results?.length > 0 ? res.data.results[0] : null;
   };
 
-  const validateCityInput = (value) => {
-    // very simple bogus check: at least 2 letters
-    return /[a-zA-Z]{2,}/.test(value);
-  };
-
-  const getWeather = useCallback(async (cityNameArg) => {
-    const searchCity = (cityNameArg ?? city).trim();
-
-    // Update UI state to reflect the current search
-    setCity(searchCity);
-    // A search term is required
-    if (!searchCity) {
-      setError("Please enter a city.");
-      return;
-    }
-    if (!validateCityInput(searchCity)) {
-      setError("That doesn't look like a valid city. Try again.");
-      return;
-    }
-
-    if (isLoading) return;
-    setIsLoading(true);
-    setError("");
-
-    try {
-      // Geocode the city name to get coordinates and timezone
-      const geoResult = await geocodeCity(searchCity);
-      if (!geoResult) {
-        throw new Error("City not found.");
+  const getWeather = useCallback(
+    async (cityNameArg) => {
+      const searchCity = (cityNameArg ?? city).trim();
+      if (!searchCity) {
+        setError("Please enter a city.");
+        return;
       }
+      if (isLoading) return;
+      setIsLoading(true);
+      setError("");
 
-      const { lat, lng } = geoResult.geometry;
-      const res = await fetchWeatherByCoords(lat, lng);
+      try {
+        const geoResult = await geocodeCity(searchCity);
+        if (!geoResult) throw new Error("City not found.");
+        const { lat, lng } = geoResult.geometry;
+        const res = await axios.get(
+          `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&appid=${openWeatherApiKey}&units=metric`
+        );
 
-      const data = res.data;
-      // Use the accurate IANA timezone from the geocoding result
-      setTimezone(geoResult.annotations.timezone.name);
-      setWeather(data);
-      setActiveAlert(getAlertTypeFromWeather(data));
-      updateBackground(data.weather[0].main);
-      getForecast(data.name);
-      if (data.coord) getAirQuality(data.coord.lat, data.coord.lon);
-
-      // Restore favorite state for current user only
-      setFavoriteFromRecords(data.name);
-    } catch (e) {
-      console.error("Weather fetch error:", e?.response?.data || e.message);
-      const msg =
-        e?.response?.data?.message ||
-        "We couldn't find that city. Try including the state (e.g., Water Valley, MS).";
-      setWeather(null);
-      setForecast([]);
-      setActiveAlert(null);
-      setAirQuality({ status: "idle" });
-      setError(msg);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [city, isLoading, setFavoriteFromRecords, setCity]);
-
-  // ---------- Favorite star style ----------
-  const starStyleOn = {
-    background:
-      "linear-gradient(135deg, #fff7b1 0%, #ffd84d 30%, #ffb300 60%, #ffdb6e 100%)",
-    WebkitBackgroundClip: "text",
-    backgroundClip: "text",
-    color: "transparent",
-    textShadow: "0 0 6px rgba(255, 199, 0, 0.45)",
-    fontSize: "1.05rem",
-  };
-  const starStyleOff = { color: "inherit", fontSize: "1.05rem" };
+        const data = res.data;
+        setTimezone(geoResult.annotations.timezone.name);
+        setWeather(data);
+        setActiveAlert(getAlertTypeFromWeather(data));
+        updateBackground(data.weather[0].main);
+        getForecast(data.name);
+        if (data.coord) getAirQuality(data.coord.lat, data.coord.lon);
+        setFavoriteFromRecords(data.name);
+      } catch (e) {
+        console.error("Weather fetch error:", e);
+        setError("We couldn't find that city. Try including the state.");
+        setWeather(null);
+        setForecast([]);
+        setActiveAlert(null);
+        setAirQuality({ status: "idle" });
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [city, isLoading, setFavoriteFromRecords]
+  );
 
   // ---------- Favorite toggle ----------
   const toggleFavorite = async () => {
@@ -337,8 +232,6 @@ const handleCitySelect = (selectedCity) => {
     }
 
     const next = !isFavorite;
-
-    // Build save body (temperature as "C°C / F°F")
     const c = Math.round(weather.main.temp);
     const f = Math.round((c * 9) / 5 + 32);
     const body = {
@@ -358,15 +251,10 @@ const handleCitySelect = (selectedCity) => {
     const existing = recordForCity(weather.name);
     const payload = { id: existing?.id, body };
 
-    // Optimistic UI
     setIsFavorite(next);
-    setRecords((prev) => {
-      if (existing) {
-        return prev.map((r) => (r.id === existing.id ? { ...r, body } : r));
-      }
-      // Add new
-      return [...prev, { id: undefined, body }];
-    });
+    setRecords((prev) =>
+      existing ? prev.map((r) => (r.id === existing.id ? { ...r, body } : r)) : [...prev, { id: undefined, body }]
+    );
 
     try {
       const saved = await saveRecord(payload);
@@ -374,47 +262,17 @@ const handleCitySelect = (selectedCity) => {
       setRecords((prev) =>
         prev.map((r) =>
           (existing && r.id === existing.id) || (!existing && r.body === body)
-            ? { ...(saved || r), id: savedId, body: body }
+            ? { ...(saved || r), id: savedId, body }
             : r
         )
       );
-    } catch (e) {
-      console.error("Favorite toggle failed:", e);
-      // Revert
+    } catch {
       setIsFavorite(!next);
-      setRecords((prev) => (existing ? prev : prev.filter((r) => r.body !== body)));
       setError("Could not save favorite. Please try again.");
     }
   };
 
-  // Toggle from list
-  const toggleFavoriteFromList = async (cityName) => {
-    const record = recordForCity(cityName);
-    if (!record) return;
-
-    const next = !record.body.favorite;
-    const updatedBody = { ...record.body, favorite: next };
-
-    // Optimistic update
-    setRecords((prev) => prev.map((r) => (r.id === record.id ? { ...r, body: updatedBody } : r)));
-    if (weather && weather.name.toLowerCase() === cityName.toLowerCase()) {
-      setIsFavorite(next);
-    }
-
-    try {
-      await saveRecord({ id: record.id, body: updatedBody });
-    } catch (e) {
-      console.error("Favorite toggle from list failed:", e);
-      // Revert
-      setRecords((prev) => prev.map((r) => (r.id === record.id ? record : r)));
-      if (weather && weather.name.toLowerCase() === cityName.toLowerCase()) {
-        setIsFavorite(!next);
-      }
-      setError("Could not update favorite. Please try again.");
-    }
-  };
-
-  // Delete from list
+  // ---------- Delete City ----------
   const deleteCityRecord = async (cityName) => {
     const rec = recordForCity(cityName);
     if (!rec?.id) return;
@@ -424,46 +282,34 @@ const handleCitySelect = (selectedCity) => {
       }
       await deleteRecordById(rec.id);
       setRecords((prev) => prev.filter((r) => r.id !== rec.id));
-    } catch (e) {
-      console.error("Error deleting record:", e);
+    } catch {
       setError("Failed to delete. Please try again.");
     }
   };
 
-  // Local Time
+  // ---------- Local Time ----------
   const getLocalTime = useCallback(() => {
     if (!timezone) return null;
     const now = new Date();
-    return now.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-      timeZone: timezone,
-    });
+    return now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: timezone });
   }, [timezone]);
 
-  // Update local time every minute
   useEffect(() => {
-    // Set the time immediately
     setLocalTime(getLocalTime());
-
-    const interval = setInterval(() => {
-      setLocalTime(getLocalTime());
-    }, 60000);
-
+    const interval = setInterval(() => setLocalTime(getLocalTime()), 60000);
     return () => clearInterval(interval);
   }, [getLocalTime]);
 
-  if (!recordsLoaded) {
-    return <div className="loading-placeholder">Loading...</div>;
-  }
+  if (!recordsLoaded) return <div className="loading-placeholder">Loading...</div>;
+
+  const starStyleOn = { color: "#ffd84d", textShadow: "0 0 6px rgba(255, 199, 0, 0.45)" };
+  const starStyleOff = { color: "#ccc" };
 
   return (
     <>
       <div className="background-overlay"></div>
       <div className="weather-container glass">
         <h2>Check the Weather</h2>
-        {/* Simple per-user identity so favorites are separated cleanly */}
         <div className="input-row" style={{ marginBottom: 8 }}>
           <input
             type="text"
@@ -475,126 +321,49 @@ const handleCitySelect = (selectedCity) => {
         </div>
 
         <div className="input-row">
-          <CitySearch onCitySelect={handleCitySelect} city={city} setCity={setCity} />
-          <button onClick={() => handleCitySelect()} disabled={isLoading} style={{ marginLeft: '8px' }}>
+          <CitySearch onCitySelect={getWeather} city={city} setCity={setCity} />
+          <button onClick={() => getWeather(city)} disabled={isLoading} style={{ marginLeft: "8px" }}>
             {isLoading ? "Searching..." : "Search"}
           </button>
         </div>
 
         <div className="input-row" style={{ justifyContent: "center", marginTop: 8 }}>
           <UseMyLocation
-            onWeatherFetched={handleWeatherFetched}
+            onWeatherFetched={getWeather}
             setLoading={setIsLoading}
             setErrorMessage={setError}
+            setNearestUsed={setNearestUsed}  // ✅ Add this back
           />
         </div>
 
-        {nearestUsed && (
-          <p style={{ color: "#555", marginTop: "8px", fontStyle: "italic" }}>
-            📍 Showing nearest city based on your location
-          </p>
-        )}
-
+        {nearestUsed && <p style={{ color: "#555", marginTop: "8px", fontStyle: "italic" }}>📍 Showing nearest city</p>}
         {error && <div className="error-banner">{error}</div>}
 
         {weather && (
           <div className="weather-info fade-in">
-            <h3 className="readable-text">{weather.name}</h3>
-            <p className="readable-text">🕐 Local Time: {localTime}</p>
-            <p className="readable-text">
-              🌡️ {Math.round(weather.main.temp)}°C ({Math.round((weather.main.temp * 9) / 5 + 32)}°F)
-            </p>
-            <p className="readable-text" style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              {String(weather.weather[0].main || "").toLowerCase() === "clear" ? (
-                <svg
-                  width={ICON_SIZE}
-                  height={ICON_SIZE}
-                  viewBox="0 0 64 64"
-                  xmlns="http://www.w3.org/2000/svg"
-                  role="img"
-                  aria-label={weather.weather[0].description || "Clear"}
-                >
-                  <circle cx="32" cy="32" r="10" fill="#FFD54F" />
-                  <g stroke="#FFD066" strokeWidth="2" strokeLinecap="round" transform="translate(32,32)">
-                    <line x1="0" y1="-16" x2="0" y2="-10" />
-                    <line x1="0" y1="10" x2="0" y2="16" />
-                    <line x1="-16" y1="0" x2="-10" y2="0" />
-                    <line x1="10" y1="0" x2="16" y2="0" />
-                    <line x1="-10" y1="-10" x2="-6" y2="-6" />
-                    <line x1="6" y1="6" x2="10" y2="10" />
-                    <line x1="-10" y1="10" x2="-6" y2="6" />
-                    <line x1="6" y1="-6" x2="10" y2="-10" />
-                  </g>
-                </svg>
-              ) : (
-                <img
-                  src={`https://openweathermap.org/img/wn/${weather.weather[0].icon}@2x.png`}
-                  alt={weather.weather[0].description}
-                  style={{ width: ICON_SIZE, height: ICON_SIZE }}
-                />
-              )}
-              <span style={{ marginTop: 6 }}>{weather.weather[0].description}</span>
-            </p>
-            <p className="readable-text">💨 Wind: {weather.wind.speed} m/s</p>
-
+            <h3>{weather.name}</h3>
+            <p>🕐 Local Time: {localTime}</p>
+            <p>🌡️ {weather.main.temp.toFixed(1)}°C ({((weather.main.temp * 9) / 5 + 32).toFixed(1)}°F)</p>
+            <p>☁️ {weather.weather[0].description}</p>
+            <p>💨 Wind: {weather.wind.speed} m/s</p>
             {airQuality.status === "success" && (
-              <p className="readable-text">
+              <p>
                 🌬️ AQI: <strong>{airQuality.data.aqi}</strong> ({airQuality.data.category})
               </p>
             )}
-
-            <button
-              onClick={toggleFavorite}
-              className="favorite-btn"
-              title={isFavorite ? "Click to unfavorite" : "Click to favorite"}
-              style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
-            >
-              <span style={isFavorite ? starStyleOn : starStyleOff}>
-                {isFavorite ? "★" : "☆"}
-              </span>
+            <button onClick={toggleFavorite} className="favorite-btn">
+              <span style={isFavorite ? starStyleOn : starStyleOff}>{isFavorite ? "★" : "☆"}</span>
               {isFavorite ? "Favorited" : "Favorite"}
             </button>
 
-            {activeAlert ? (
-              <WeatherAlert type={activeAlert} />
-            ) : (
-              <div className="no-alert-message">No active weather alerts 🌤️</div>
-            )}
+            {activeAlert ? <WeatherAlert type={activeAlert} /> : <div className="no-alert-message">No active alerts 🌤️</div>}
 
             {forecast.length > 0 && (
               <div className="forecast-container">
                 {forecast.map((day, i) => (
                   <div key={i} className="forecast-day">
                     <strong>{day.date}</strong>
-                    {String(day.main || "").toLowerCase() === "clear" ? (
-                      // Inline sun SVG without a background box — only sun and rays
-                      <svg
-                        width={ICON_SIZE}
-                        height={ICON_SIZE}
-                        viewBox="0 0 64 64"
-                        xmlns="http://www.w3.org/2000/svg"
-                        role="img"
-                        aria-label={day.main || "Clear"}
-                      >
-                        <circle cx="32" cy="32" r="10" fill="#FFD54F" />
-                        <g stroke="#FFD066" strokeWidth="2" strokeLinecap="round" transform="translate(32,32)">
-                          <line x1="0" y1="-16" x2="0" y2="-10" />
-                          <line x1="0" y1="10" x2="0" y2="16" />
-                          <line x1="-16" y1="0" x2="-10" y2="0" />
-                          <line x1="10" y1="0" x2="16" y2="0" />
-                          <line x1="-10" y1="-10" x2="-6" y2="-6" />
-                          <line x1="6" y1="6" x2="10" y2="10" />
-                          <line x1="-10" y1="10" x2="-6" y2="6" />
-                          <line x1="6" y1="-6" x2="10" y2="-10" />
-                        </g>
-                      </svg>
-                    ) : (
-                      <img
-                        src={`https://openweathermap.org/img/wn/${day.icon}@2x.png`}
-                        alt={day.main}
-                        style={{ width: ICON_SIZE, height: ICON_SIZE }}
-                      />
-                    )}
+                    <img src={`https://openweathermap.org/img/wn/${day.icon}@2x.png`} alt={day.main} />
                     <p>{day.main}</p>
                     <p>H: {Math.round(day.highC)}°C / {Math.round(day.highF)}°F</p>
                     <p>L: {Math.round(day.lowC)}°C / {Math.round(day.lowF)}°F</p>
@@ -605,56 +374,40 @@ const handleCitySelect = (selectedCity) => {
           </div>
         )}
 
-        {/* Your Cities (only current user's favorited cities) */}
         {username?.trim() && favoriteRecords.length > 0 && (
           <div className="favorites-section fade-in" style={{ marginTop: 16 }}>
-            <h3
-              onClick={() => setShowFavorites(!showFavorites)}
-              style={{ cursor: "pointer" }}
-            >
+            <h3 onClick={() => setShowFavorites(!showFavorites)} style={{ cursor: "pointer" }}>
               Your Cities {showFavorites ? "▼" : "►"}
             </h3>
             {showFavorites && (
               <div className="favorites-buttons">
-                {favoriteRecords.map((r) => (
-                  <div key={r.id ?? `${r.body?.user}:${r.body?.name}`} className="favorite-item">
-                    <span
-                      className="favorite-item-star"
-                      style={r.body?.favorite ? starStyleOn : starStyleOff}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFavoriteFromList(r.body?.name);
-                      }}
-                    >
-                      {r.body?.favorite ? "★" : "☆"}
-                    </span>
-                    <span
-                      className="favorite-item-name"
-                      onClick={() => {
-                        setCity(r.body?.name || "");
-                        getWeather(r.body?.name);
-                      }}
-                    >
-                      {r.body?.name}
-                    </span>
-                    <button
-                      className="remove-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteCityRecord(r.body?.name);
-                      }}
-                      title="Remove from favorites"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
+                {favoriteRecords
+                  .filter((r) => r && r.body && r.body.name)
+                  .map((r) => {
+                    const cityName = r.body.name;
+                    return (
+                      <div key={r.id ?? `${r.body.user}:${cityName}`} className="favorite-item">
+                        <span
+                          className="favorite-item-star"
+                          style={r.body.favorite ? starStyleOn : starStyleOff}
+                          onClick={() => toggleFavorite(cityName)}
+                        >
+                          {r.body.favorite ? "★" : "☆"}
+                        </span>
+                        <span className="favorite-item-name" onClick={() => getWeather(cityName)}>
+                          {cityName}
+                        </span>
+                        <button className="remove-btn" onClick={() => deleteCityRecord(cityName)}>
+                          ✕
+                        </button>
+                      </div>
+                    );
+                  })}
               </div>
             )}
           </div>
         )}
-
-        {weather && <IssueReport user={username} city={weather?.name} />}
+        {weather && <IssueReport user={username} city={weather.name} />}
       </div>
     </>
   );
