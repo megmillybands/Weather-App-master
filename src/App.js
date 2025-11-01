@@ -32,6 +32,26 @@ function App() {
         <div className="background-overlay"></div>
         <h1>Weather App</h1>
         <AuthBox setAuthUser={setAuthUser} />
+        <div style={{ textAlign: "center", marginTop: "1rem" }}>
+          <button 
+            onClick={() => setAuthUser({ username: "Guest", isGuest: true })}
+            style={{
+              padding: "14px 28px",
+              background: "rgba(255, 255, 255, 0.4)",
+              border: "1px solid rgba(255, 255, 255, 0.6)",
+              borderRadius: "10px",
+              color: "white",
+              cursor: "pointer",
+              fontSize: "1.1rem",
+              fontWeight: "600",
+              backdropFilter: "blur(10px)",
+              textShadow: "0 1px 3px rgba(0, 0, 0, 0.2)",
+              transition: "transform 0.2s ease",
+            }}
+          >
+            📍 Check Weather as Guest
+          </button>
+        </div>
       </div>
     );
   }

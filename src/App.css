@@ -118,17 +118,32 @@ h3 {
   border-radius: 8px;
 }
 
+.card-icon {
+  font-size: 2rem;
+  margin: 0.25rem;
+}
+
+.flip-card-front > p {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
 .auth-toggle {
-  color: #ffeb99;
+  color: #ffffff;
   cursor: pointer;
   text-decoration: underline;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  display: inline-block;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
 .logout-btn {
   position: absolute;
   top: 30px;
   right: 30px;
-  padding: 8px 14px;
+  padding: 22x 25x;
+  font-size: 1.1rem;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.25);
   border: none;
@@ -308,7 +323,9 @@ h3 {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
   transition: transform 0.25s ease, box-shadow 0.25s ease;
   border: 1px solid rgba(255, 255, 255, 0.35);
 }
@@ -326,13 +343,13 @@ h3 {
 
 .forecast-day p {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 1rem;
   color: #333;
   font-weight: 500;
 }
 
 .forecast-day strong {
-  font-size: 1.05rem;
+  font-size: 1.15rem;
   margin-bottom: 5px;
   color: #222;
   display: block;
@@ -557,39 +574,122 @@ h3 {
 /* Autocomplete Suggestions List */
 .suggestions-list {
   position: absolute;
-  top: calc(100% - 1px); /* Overlap border */
+  top: 100%;
   left: 0;
   width: 100%;
-  background-color: rgba(255, 255, 255, 0.3); /* Match input background */
-  backdrop-filter: blur(10px); /* Match glass effect */
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(15px) saturate(180%);
+  -webkit-backdrop-filter: blur(15px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-top: none;
-  border-radius: 0 0 10px 10px; /* Match input border radius */
+  border-radius: 0 0 10px 10px;
   list-style-type: none;
   margin: 0;
   padding: 0;
   z-index: 100;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
   max-height: 200px;
   overflow-y: auto;
 }
 
 .suggestions-list li {
-  padding: 10px 15px;
+  padding: 12px 15px;
   cursor: pointer;
-  color: #333;
+  color: #fff;
   font-family: Arial, Helvetica, sans-serif;
   font-size: 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  transition: background-color 0.2s ease;
+  font-weight: normal;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
 }
 
 .suggestions-list li:last-child {
   border-bottom: none;
-  border-radius: 0 0 10px 10px;
 }
 
 .suggestions-list li:hover {
-  background-color: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(15px);
+  background: rgba(255, 255, 255, 0.4);
+}
+
+/* ---------------- FLIP CARDS ---------------- */
+
+.weather-extra-details-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 25px;
+  padding: 10px 0;
+}
+
+.weather-extra-details-box {
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 18px;
+  padding: 14px;
+  width: 130px;
+  height: 165px;
+  text-align: center;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  perspective: 1000px;
+  position: relative;
+}
+
+.weather-extra-details-box:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.55), 
+              0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+}
+
+.weather-extra-details-box .flip-card-inner.flipped {
+  transform: rotateY(180deg);
+}
+
+.flip-card-front,
+.flip-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+}
+
+.flip-card-front {
+  color: #333;
+  font-weight: 500;
+}
+
+.flip-card-back {
+  background: rgba(255, 255, 255, 0.25);
+  color: #222;
+  transform: rotateY(180deg);
+  font-size: 0.9rem;
+  padding: 8px;
+}
+
+.flip-card-back p {
+  margin: 0.15rem 0;
+  color: #222;
+  font-weight: 500;
+}
+
+.flip-card-back strong {
+  color: #000;
+  font-size: 1rem;
 }
